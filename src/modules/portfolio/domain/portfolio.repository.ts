@@ -6,6 +6,9 @@ export interface InstrumentPosition {
 export interface InstrumentPrice {
   instrumentId: number;
   close: string;
+  previousClose: string | null;
+  ticker: string | null;
+  name: string | null;
 }
 
 export abstract class PortfolioRepository {

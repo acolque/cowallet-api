@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { instruments } from '../../../instruments/infrastructure/persistence/instruments.table';
 import { marketdata } from '../../../instruments/infrastructure/persistence/marketdata.table';
 import { orders } from '../../../orders/infrastructure/persistence/orders.table';
 import { DatabaseConnection } from '../../../../shared/infrastructure/database/database.connection';
@@ -84,8 +85,12 @@ export class DrizzlePortfolioRepository extends PortfolioRepository {
       .selectDistinctOn([marketdata.instrumentId], {
         instrumentId: marketdata.instrumentId,
         close: marketdata.close,
+        previousClose: marketdata.previousClose,
+        ticker: instruments.ticker,
+        name: instruments.name,
       })
       .from(marketdata)
+      .leftJoin(instruments, eq(instruments.id, marketdata.instrumentId))
       .where(inArray(marketdata.instrumentId, instrumentIds))
       .orderBy(marketdata.instrumentId, desc(marketdata.date));
   }

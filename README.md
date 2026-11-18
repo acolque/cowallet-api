@@ -25,6 +25,10 @@ npm run start:dev
 
 ## Supuestos
 
-Una posición neta negativa (`size` de ventas mayor que el de compras para un instrumento) se trata como un dato inconsistente. Ese instrumento no entra en el valor de mercado ni en `totalBalanceArs`. El caso de uso deja un log de Pino en nivel `error` con `userId`, `instrumentId` y `netSize` para investigar y corregir el dato a mano.
+### Portfolio
 
-Una orden `BUY` de tipo `LIMIT` en estado `NEW` todavía no se ejecutó, pero reserva capital para esa compra. `availableCashArs` es el efectivo menos la suma de `size * price` de esas órdenes. `cashBalanceArs` y `totalBalanceArs` no descuentan esa reserva.
+* Una posición neta negativa (`size` de ventas mayor que el de compras para un instrumento) se trata como un dato inconsistente. Ese instrumento no entra en el valor de mercado ni en `totalBalanceArs`. Para no ocultar la inconsistencia (omitiendolo en el calculo del saldo total) se deja un log con nivel `error` con la información necesaria (`userId`, `instrumentId` y `netSize`) para realizar una investigación y correción manual de ser necesario. Para el alcance del challenge solo dejo el log, pero sí sería mejor alimentar una métrica y configurar alertas apropiadas.
+
+* Una orden `BUY` de tipo `LIMIT` en estado `NEW` todavía no se ejecutó, pero reserva capital para esa compra. `availableCashArs` es el efectivo menos la suma de `size * price` de esas órdenes. `cashBalanceArs` y `totalBalanceArs` no descuentan esa reserva. Esto para evitar que el usuario pueda ejecutar ordenes LIMIT con capital que no posee.
+
+* Para el rendimiento de los activos, se pidió el "rendimiento total", pero por simplicidad se optó dejar el rendimiento diario (el cual está explicito como se cálcula). El total exigiría comparar el precio de cada compra con el último `close`. Si el mismo activo se compró varias veces a precios distintos, el resultado depende de una estrategia (precio promedio, precio ponderado u otra). Para no elegir una, `dailyReturnPercentage` es la variación porcentual entre `close` y `previousclose` de la última fila de `marketdata`. Si `previousclose` es nulo o cero, el rendimiento queda en `null`.

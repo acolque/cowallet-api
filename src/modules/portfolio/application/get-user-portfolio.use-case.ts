@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
-import { addDecimal, isNegativeDecimal, multiplyDecimal } from '../domain/decimal';
+import { addDecimal, isNegativeDecimal, multiplyDecimal, percentageChange } from '../domain/decimal';
 import { PortfolioRepository } from '../domain/portfolio.repository';
 import { UserPortfolio } from '../domain/user-portfolio';
 
@@ -38,18 +38,35 @@ export class GetUserPortfolioUseCase {
     const prices = await this.portfolioRepository.getLatestPrices(
       valuedPositions.map((position) => position.instrumentId),
     );
-    const closeByInstrument = new Map(
-      prices.map((price) => [price.instrumentId, price.close]),
+    const priceByInstrument = new Map(
+      prices.map((price) => [price.instrumentId, price]),
     );
 
-    const marketValueArs = valuedPositions.reduce((total, position) => {
-      const close = closeByInstrument.get(position.instrumentId);
-      if (close === undefined) {
-        return total;
+    const assets = valuedPositions.flatMap((position) => {
+      const price = priceByInstrument.get(position.instrumentId);
+      if (price === undefined) {
+        return [];
       }
 
-      return addDecimal(total, multiplyDecimal(position.netSize, close));
-    }, '0');
+      return [
+        {
+          instrumentId: position.instrumentId,
+          ticker: price.ticker,
+          name: price.name,
+          netSize: position.netSize,
+          positionValueArs: multiplyDecimal(position.netSize, price.close),
+          dailyReturnPercentage: percentageChange(
+            price.close,
+            price.previousClose,
+          ),
+        },
+      ];
+    });
+
+    const marketValueArs = assets.reduce(
+      (total, asset) => addDecimal(total, asset.positionValueArs),
+      '0',
+    );
 
     return {
       userId,
@@ -59,6 +76,7 @@ export class GetUserPortfolioUseCase {
         multiplyDecimal(reservedBuyCashArs, '-1'),
       ),
       totalBalanceArs: addDecimal(cashBalanceArs, marketValueArs),
+      assets,
     };
   }
 }

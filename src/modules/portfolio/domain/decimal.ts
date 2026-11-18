@@ -55,6 +55,33 @@ export function addDecimal(left: string, right: string): string {
   return formatDecimal(negative, negative ? -signed : signed, scale);
 }
 
+function divideDecimal(
+  numerator: string,
+  denominator: string,
+  scale: number,
+): string {
+  const a = parseDecimal(numerator);
+  const b = parseDecimal(denominator);
+  const negative = a.negative !== b.negative;
+  const digits =
+    (a.digits * 10n ** BigInt(b.scale + scale)) /
+    (b.digits * 10n ** BigInt(a.scale));
+
+  return formatDecimal(negative, digits, scale);
+}
+
+export function percentageChange(
+  current: string,
+  previous: string | null,
+): string | null {
+  if (previous === null || parseDecimal(previous).digits === 0n) {
+    return null;
+  }
+
+  const difference = addDecimal(current, multiplyDecimal(previous, '-1'));
+  return divideDecimal(multiplyDecimal(difference, '100'), previous, 2);
+}
+
 export function isNegativeDecimal(value: string): boolean {
   const parsed = parseDecimal(value);
   return parsed.negative && parsed.digits !== 0n;
