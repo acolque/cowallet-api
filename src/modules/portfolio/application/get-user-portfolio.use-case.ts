@@ -13,8 +13,9 @@ export class GetUserPortfolioUseCase {
   ) {}
 
   async execute(userId: number): Promise<UserPortfolio> {
-    const [cashBalanceArs, positions] = await Promise.all([
+    const [cashBalanceArs, reservedBuyCashArs, positions] = await Promise.all([
       this.portfolioRepository.getCashBalanceArs(userId),
+      this.portfolioRepository.getReservedBuyCashArs(userId),
       this.portfolioRepository.getNetInstrumentPositions(userId),
     ]);
 
@@ -53,6 +54,10 @@ export class GetUserPortfolioUseCase {
     return {
       userId,
       cashBalanceArs,
+      availableCashArs: addDecimal(
+        cashBalanceArs,
+        multiplyDecimal(reservedBuyCashArs, '-1'),
+      ),
       totalBalanceArs: addDecimal(cashBalanceArs, marketValueArs),
     };
   }

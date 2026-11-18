@@ -26,3 +26,5 @@ npm run start:dev
 ## Supuestos
 
 Una posición neta negativa (`size` de ventas mayor que el de compras para un instrumento) se trata como un dato inconsistente. Ese instrumento no entra en el valor de mercado ni en `totalBalanceArs`. El caso de uso deja un log de Pino en nivel `error` con `userId`, `instrumentId` y `netSize` para investigar y corregir el dato a mano.
+
+Una orden `BUY` de tipo `LIMIT` en estado `NEW` todavía no se ejecutó, pero reserva capital para esa compra. `availableCashArs` es el efectivo menos la suma de `size * price` de esas órdenes. `cashBalanceArs` y `totalBalanceArs` no descuentan esa reserva.

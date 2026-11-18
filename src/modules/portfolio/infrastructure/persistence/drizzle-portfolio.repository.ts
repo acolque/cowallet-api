@@ -34,6 +34,24 @@ export class DrizzlePortfolioRepository extends PortfolioRepository {
     return row?.cashBalanceArs ?? '0';
   }
 
+  async getReservedBuyCashArs(userId: number): Promise<string> {
+    const [row] = await this.database.db
+      .select({
+        reservedCashArs: sql<string>`coalesce(sum(${orders.size} * ${orders.price}), 0)`,
+      })
+      .from(orders)
+      .where(
+        and(
+          eq(orders.userId, userId),
+          eq(orders.side, 'BUY'),
+          eq(orders.status, 'NEW'),
+          eq(orders.type, 'LIMIT'),
+        ),
+      );
+
+    return row?.reservedCashArs ?? '0';
+  }
+
   async getNetInstrumentPositions(userId: number): Promise<InstrumentPosition[]> {
     return this.database.db
       .select({
