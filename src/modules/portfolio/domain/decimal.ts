@@ -54,3 +54,8 @@ export function addDecimal(left: string, right: string): string {
 
   return formatDecimal(negative, negative ? -signed : signed, scale);
 }
+
+export function isNegativeDecimal(value: string): boolean {
+  const parsed = parseDecimal(value);
+  return parsed.negative && parsed.digits !== 0n;
+}
