@@ -15,5 +15,6 @@ import { DrizzleInstrumentRepository } from './infrastructure/persistence/drizzl
       useClass: DrizzleInstrumentRepository,
     },
   ],
+  exports: [InstrumentRepository],
 })
 export class InstrumentsModule {}

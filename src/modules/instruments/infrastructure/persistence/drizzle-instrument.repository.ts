@@ -51,4 +51,19 @@ export class DrizzleInstrumentRepository extends InstrumentRepository {
       .orderBy(relevance, asc(instruments.ticker))
       .limit(criteria.limit);
   }
+
+  async findById(id: number): Promise<Instrument | null> {
+    const [row] = await this.database.db
+      .select({
+        id: instruments.id,
+        ticker: instruments.ticker,
+        name: instruments.name,
+        type: instruments.type,
+      })
+      .from(instruments)
+      .where(eq(instruments.id, id))
+      .limit(1);
+
+    return row ?? null;
+  }
 }

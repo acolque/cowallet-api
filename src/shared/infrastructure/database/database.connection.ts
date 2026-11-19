@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { drizzle, NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
@@ -26,13 +27,24 @@ function connectionStringFromEnv(): string {
 @Injectable()
 export class DatabaseConnection implements OnModuleDestroy {
   readonly pool: Pool;
-  readonly db: NodePgDatabase;
+  private readonly root: NodePgDatabase;
+  private readonly context = new AsyncLocalStorage<NodePgDatabase>();
 
   constructor() {
     this.pool = new Pool({
       connectionString: connectionStringFromEnv(),
     });
-    this.db = drizzle(this.pool);
+    this.root = drizzle(this.pool);
+  }
+
+  get db(): NodePgDatabase {
+    return this.context.getStore() ?? this.root;
+  }
+
+  transaction<T>(action: () => Promise<T>): Promise<T> {
+    return this.root.transaction((tx) =>
+      this.context.run(tx as NodePgDatabase, action),
+    );
   }
 
   async onModuleDestroy(): Promise<void> {

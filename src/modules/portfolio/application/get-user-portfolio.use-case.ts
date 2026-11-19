@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
-import { addDecimal, isNegativeDecimal, multiplyDecimal, percentageChange } from '../domain/decimal';
+import {
+  addDecimal,
+  isNegativeDecimal,
+  multiplyDecimal,
+  percentageChange,
+} from '../../../shared/domain/decimal';
+import { availableCashArs } from '../domain/available-cash';
 import { PortfolioRepository } from '../domain/portfolio.repository';
 import { UserPortfolio } from '../domain/user-portfolio';
 
@@ -71,10 +77,7 @@ export class GetUserPortfolioUseCase {
     return {
       userId,
       cashBalanceArs,
-      availableCashArs: addDecimal(
-        cashBalanceArs,
-        multiplyDecimal(reservedBuyCashArs, '-1'),
-      ),
+      availableCashArs: availableCashArs(cashBalanceArs, reservedBuyCashArs),
       totalBalanceArs: addDecimal(cashBalanceArs, marketValueArs),
       assets,
     };
