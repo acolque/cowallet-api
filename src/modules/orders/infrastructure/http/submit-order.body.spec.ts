@@ -46,6 +46,31 @@ describe('SubmitOrderBody', () => {
     ).resolves.toContain('Limit orders require a price greater than zero');
   });
 
+  it('accepts a cash transfer as a peso amount', async () => {
+    await expect(
+      messages(body({ side: 'CASH_IN', type: 'MARKET', amount: '25000' })),
+    ).resolves.toEqual([]);
+    await expect(
+      messages(body({ side: 'CASH_OUT', type: 'MARKET', amount: '25000' })),
+    ).resolves.toEqual([]);
+  });
+
+  it('rejects a cash transfer with a quantity, a price, or a limit type', async () => {
+    await expect(
+      messages(body({ side: 'CASH_IN', type: 'MARKET', quantity: 10 })),
+    ).resolves.toContain('Cash transfers send a peso amount as a market order');
+    await expect(
+      messages(
+        body({ side: 'CASH_OUT', type: 'MARKET', amount: '10', price: '1.00' }),
+      ),
+    ).resolves.toContain('Cash transfers send a peso amount as a market order');
+    await expect(
+      messages(
+        body({ side: 'CASH_IN', type: 'LIMIT', amount: '10', price: '1.00' }),
+      ),
+    ).resolves.toContain('Cash transfers send a peso amount as a market order');
+  });
+
   it('rejects a quantity above the integer column limit', async () => {
     const result = await validate(
       body({ type: 'MARKET', quantity: 2_147_483_648 }),

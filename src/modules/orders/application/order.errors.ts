@@ -20,8 +20,8 @@ export class InstrumentNotFoundError extends Error {
 }
 
 export class InstrumentNotTradableError extends Error {
-  constructor() {
-    super('Instrument is not a stock');
+  constructor(message = 'Instrument is not a stock') {
+    super(message);
     this.name = 'InstrumentNotTradableError';
   }
 }

@@ -42,6 +42,12 @@ describe('SubmitOrderUseCase', () => {
     name: 'Grupo Financiero Galicia',
     type: 'ACCIONES',
   };
+  const currency = {
+    id: 1,
+    ticker: 'ARS',
+    name: 'Peso Argentino',
+    type: 'MONEDA',
+  };
 
   beforeEach(() => {
     orders.userExists.mockReset();
@@ -258,6 +264,68 @@ describe('SubmitOrderUseCase', () => {
 
     expect(orders.insert).not.toHaveBeenCalled();
   });
+
+  it('fills an incoming transfer for the peso amount at price 1', async () => {
+    instruments.findById.mockResolvedValue(currency);
+
+    const result = await useCase.execute(
+      transfer({ side: 'CASH_IN', amount: '25000' }),
+    );
+
+    expect(latestClose.execute).not.toHaveBeenCalled();
+    expect(availableCash.execute).not.toHaveBeenCalled();
+    expect(orders.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        size: 25000,
+        price: '1.00',
+        type: 'MARKET',
+        side: 'CASH_IN',
+        status: 'FILLED',
+      }),
+    );
+    expect(result.status).toBe('FILLED');
+  });
+
+  it('fills an outgoing transfer when available cash covers the amount', async () => {
+    instruments.findById.mockResolvedValue(currency);
+    availableCash.execute.mockResolvedValue('30000.00');
+
+    const result = await useCase.execute(
+      transfer({ side: 'CASH_OUT', amount: '25000' }),
+    );
+
+    expect(availableCash.execute).toHaveBeenCalledWith(7);
+    expect(result).toEqual(
+      expect.objectContaining({ status: 'FILLED', size: 25000, side: 'CASH_OUT' }),
+    );
+  });
+
+  it('rejects an outgoing transfer that would spend reserved cash', async () => {
+    instruments.findById.mockResolvedValue(currency);
+    availableCash.execute.mockResolvedValue('10000');
+
+    const result = await useCase.execute(
+      transfer({ side: 'CASH_OUT', amount: '25000' }),
+    );
+
+    expect(result.status).toBe('REJECTED');
+    expect(orders.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'REJECTED', size: 25000 }),
+    );
+  });
+
+  it('does not persist a transfer on a stock or a buy on a currency', async () => {
+    await expect(
+      useCase.execute(transfer({ side: 'CASH_IN', amount: '1000' })),
+    ).rejects.toBeInstanceOf(InstrumentNotTradableError);
+
+    instruments.findById.mockResolvedValue(currency);
+    await expect(
+      useCase.execute(buy({ type: 'MARKET', quantity: 1 })),
+    ).rejects.toBeInstanceOf(InstrumentNotTradableError);
+
+    expect(orders.insert).not.toHaveBeenCalled();
+  });
 });
 
 function buy(overrides: Partial<SubmitOrderInput>): SubmitOrderInput {
@@ -265,6 +333,16 @@ function buy(overrides: Partial<SubmitOrderInput>): SubmitOrderInput {
     userId: 7,
     instrumentId: 34,
     side: 'BUY',
+    type: 'MARKET',
+    ...overrides,
+  };
+}
+
+function transfer(overrides: Partial<SubmitOrderInput>): SubmitOrderInput {
+  return {
+    userId: 7,
+    instrumentId: 1,
+    side: 'CASH_IN',
     type: 'MARKET',
     ...overrides,
   };

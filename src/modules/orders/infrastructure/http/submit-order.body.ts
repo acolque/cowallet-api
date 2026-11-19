@@ -12,7 +12,7 @@ import {
   ValidatorConstraintInterface,
 } from 'class-validator';
 import { compareDecimal } from '../../../../shared/domain/decimal';
-import { OrderType } from '../../domain/order';
+import { OrderSide, OrderType } from '../../domain/order';
 
 const MAX_SHARE_QUANTITY = 2_147_483_647;
 const PRICE = /^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/;
@@ -37,8 +37,8 @@ export class SubmitOrderBody {
   @Min(1)
   instrumentId!: number;
 
-  @IsIn(['BUY', 'SELL'])
-  side!: 'BUY' | 'SELL';
+  @IsIn(['BUY', 'SELL', 'CASH_IN', 'CASH_OUT'])
+  side!: OrderSide;
 
   @IsIn(['MARKET', 'LIMIT'])
   @Validate(SubmitOrderShapeConstraint)
@@ -62,6 +62,18 @@ export class SubmitOrderBody {
 }
 
 function shapeMessage(body: SubmitOrderBody): string | null {
+  if (body.side === 'CASH_IN' || body.side === 'CASH_OUT') {
+    if (
+      body.type !== 'MARKET' ||
+      body.amount === undefined ||
+      body.quantity !== undefined ||
+      body.price !== undefined
+    ) {
+      return 'Cash transfers send a peso amount as a market order';
+    }
+    return null;
+  }
+
   const hasQuantity = body.quantity !== undefined;
   const hasAmount = body.amount !== undefined;
   if (hasQuantity === hasAmount) {

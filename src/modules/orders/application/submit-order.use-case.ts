@@ -8,7 +8,7 @@ import { InstrumentRepository } from '../../instruments/domain/instrument.reposi
 import { GetAvailableCashUseCase } from '../../portfolio/application/get-available-cash.use-case';
 import { GetAvailableSellSizeUseCase } from '../../portfolio/application/get-available-sell-size.use-case';
 import { GetLatestCloseUseCase } from '../../portfolio/application/get-latest-close.use-case';
-import { Order, OrderStatus, OrderType } from '../domain/order';
+import { Order, OrderSide, OrderStatus, OrderType } from '../domain/order';
 import { OrderRepository } from '../domain/order.repository';
 import {
   AmountBelowOneShareError,
@@ -20,13 +20,15 @@ import {
 } from './order.errors';
 
 const STOCK_TYPE = 'ACCIONES';
+const CURRENCY_TYPE = 'MONEDA';
+const CASH_PRICE = '1.00';
 const MAX_SHARE_QUANTITY = 2_147_483_647;
 const POSITIVE_INTEGER = /^[1-9]\d*$/;
 
 export interface SubmitOrderInput {
   userId: number;
   instrumentId: number;
-  side: 'BUY' | 'SELL';
+  side: OrderSide;
   type: OrderType;
   quantity?: number;
   amount?: string;
@@ -59,6 +61,12 @@ export class SubmitOrderUseCase {
     if (instrument === null) {
       throw new InstrumentNotFoundError();
     }
+    if (isCashTransfer(input.side)) {
+      if (instrument.type !== CURRENCY_TYPE) {
+        throw new InstrumentNotTradableError('Instrument is not a currency');
+      }
+      return this.insertCashTransfer(input);
+    }
     if (instrument.type !== STOCK_TYPE) {
       throw new InstrumentNotTradableError();
     }
@@ -77,6 +85,40 @@ export class SubmitOrderUseCase {
       status,
       datetime: new Date(),
     });
+  }
+
+  private async insertCashTransfer(input: SubmitOrderInput): Promise<Order> {
+    const size = this.cashAmount(input.amount);
+    const accepted =
+      input.side === 'CASH_IN' || (await this.canWithdraw(input.userId, size));
+
+    return this.orders.insert({
+      userId: input.userId,
+      instrumentId: input.instrumentId,
+      size,
+      price: CASH_PRICE,
+      type: 'MARKET',
+      side: input.side,
+      status: accepted ? 'FILLED' : 'REJECTED',
+      datetime: new Date(),
+    });
+  }
+
+  private cashAmount(amount: string | undefined): number {
+    if (
+      amount === undefined ||
+      !POSITIVE_INTEGER.test(amount) ||
+      BigInt(amount) > BigInt(MAX_SHARE_QUANTITY)
+    ) {
+      throw new InvalidOrderRequestError('Amount is too large');
+    }
+
+    return Number(amount);
+  }
+
+  private async canWithdraw(userId: number, size: number): Promise<boolean> {
+    const available = await this.availableCash.execute(userId);
+    return compareDecimal(String(size), available) <= 0;
   }
 
   private async priceFor(input: SubmitOrderInput): Promise<string> {
@@ -143,4 +185,8 @@ export class SubmitOrderUseCase {
     const available = await this.availableSellSize.execute(userId, instrumentId);
     return compareDecimal(String(size), available) <= 0;
   }
+}
+
+function isCashTransfer(side: OrderSide): boolean {
+  return side === 'CASH_IN' || side === 'CASH_OUT';
 }
