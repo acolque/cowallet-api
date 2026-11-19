@@ -1,0 +1,82 @@
+import { Injectable } from '@nestjs/common';
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
+import { addDecimal, isNegativeDecimal, multiplyDecimal, percentageChange } from '../domain/decimal';
+import { PortfolioRepository } from '../domain/portfolio.repository';
+import { UserPortfolio } from '../domain/user-portfolio';
+
+@Injectable()
+export class GetUserPortfolioUseCase {
+  constructor(
+    private readonly portfolioRepository: PortfolioRepository,
+    @InjectPinoLogger(GetUserPortfolioUseCase.name)
+    private readonly logger: PinoLogger,
+  ) {}
+
+  async execute(userId: number): Promise<UserPortfolio> {
+    const [cashBalanceArs, reservedBuyCashArs, positions] = await Promise.all([
+      this.portfolioRepository.getCashBalanceArs(userId),
+      this.portfolioRepository.getReservedBuyCashArs(userId),
+      this.portfolioRepository.getNetInstrumentPositions(userId),
+    ]);
+
+    const valuedPositions = positions.filter((position) => {
+      if (!isNegativeDecimal(position.netSize)) {
+        return true;
+      }
+
+      this.logger.error(
+        {
+          userId,
+          instrumentId: position.instrumentId,
+          netSize: position.netSize,
+        },
+        'Negative net instrument position ignored',
+      );
+      return false;
+    });
+
+    const prices = await this.portfolioRepository.getLatestPrices(
+      valuedPositions.map((position) => position.instrumentId),
+    );
+    const priceByInstrument = new Map(
+      prices.map((price) => [price.instrumentId, price]),
+    );
+
+    const assets = valuedPositions.flatMap((position) => {
+      const price = priceByInstrument.get(position.instrumentId);
+      if (price === undefined) {
+        return [];
+      }
+
+      return [
+        {
+          instrumentId: position.instrumentId,
+          ticker: price.ticker,
+          name: price.name,
+          netSize: position.netSize,
+          positionValueArs: multiplyDecimal(position.netSize, price.close),
+          dailyReturnPercentage: percentageChange(
+            price.close,
+            price.previousClose,
+          ),
+        },
+      ];
+    });
+
+    const marketValueArs = assets.reduce(
+      (total, asset) => addDecimal(total, asset.positionValueArs),
+      '0',
+    );
+
+    return {
+      userId,
+      cashBalanceArs,
+      availableCashArs: addDecimal(
+        cashBalanceArs,
+        multiplyDecimal(reservedBuyCashArs, '-1'),
+      ),
+      totalBalanceArs: addDecimal(cashBalanceArs, marketValueArs),
+      assets,
+    };
+  }
+}
