@@ -17,7 +17,7 @@ export class Order {
     readonly id: number,
     readonly userId: number,
     readonly instrumentId: number,
-    readonly size: string,
+    readonly size: number,
     readonly price: string,
     readonly type: OrderType,
     readonly side: OrderSide,

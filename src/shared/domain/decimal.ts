@@ -86,3 +86,17 @@ export function isNegativeDecimal(value: string): boolean {
   const parsed = parseDecimal(value);
   return parsed.negative && parsed.digits !== 0n;
 }
+
+export function compareDecimal(left: string, right: string): -1 | 0 | 1 {
+  const difference = addDecimal(left, multiplyDecimal(right, '-1'));
+  const parsed = parseDecimal(difference);
+  if (parsed.digits === 0n) {
+    return 0;
+  }
+
+  return parsed.negative ? -1 : 1;
+}
+
+export function floorDivideDecimal(numerator: string, denominator: string): string {
+  return divideDecimal(numerator, denominator, 0);
+}
