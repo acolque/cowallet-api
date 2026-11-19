@@ -6,6 +6,8 @@ import {
   multiplyDecimal,
   percentageChange,
 } from '../../../shared/domain/decimal';
+import { InstrumentRepository } from '../../instruments/domain/instrument.repository';
+import { MarketDataRepository } from '../../instruments/domain/market-data.repository';
 import { availableCashArs } from '../domain/available-cash';
 import { PortfolioRepository } from '../domain/portfolio.repository';
 import { UserPortfolio } from '../domain/user-portfolio';
@@ -14,6 +16,8 @@ import { UserPortfolio } from '../domain/user-portfolio';
 export class GetUserPortfolioUseCase {
   constructor(
     private readonly portfolioRepository: PortfolioRepository,
+    private readonly marketData: MarketDataRepository,
+    private readonly instruments: InstrumentRepository,
     @InjectPinoLogger(GetUserPortfolioUseCase.name)
     private readonly logger: PinoLogger,
   ) {}
@@ -41,11 +45,18 @@ export class GetUserPortfolioUseCase {
       return false;
     });
 
-    const prices = await this.portfolioRepository.getLatestPrices(
-      valuedPositions.map((position) => position.instrumentId),
+    const instrumentIds = valuedPositions.map(
+      (position) => position.instrumentId,
     );
+    const [prices, instruments] = await Promise.all([
+      this.marketData.getLatestPrices(instrumentIds),
+      this.instruments.findByIds(instrumentIds),
+    ]);
     const priceByInstrument = new Map(
       prices.map((price) => [price.instrumentId, price]),
+    );
+    const instrumentById = new Map(
+      instruments.map((instrument) => [instrument.id, instrument]),
     );
 
     const assets = valuedPositions.flatMap((position) => {
@@ -54,11 +65,13 @@ export class GetUserPortfolioUseCase {
         return [];
       }
 
+      const instrument = instrumentById.get(position.instrumentId);
+
       return [
         {
           instrumentId: position.instrumentId,
-          ticker: price.ticker,
-          name: price.name,
+          ticker: instrument?.ticker ?? null,
+          name: instrument?.name ?? null,
           netSize: position.netSize,
           positionValueArs: multiplyDecimal(position.netSize, price.close),
           dailyReturnPercentage: percentageChange(

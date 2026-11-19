@@ -1,7 +1,7 @@
 import { InstrumentRepository } from '../../instruments/domain/instrument.repository';
+import { MarketDataRepository } from '../../instruments/domain/market-data.repository';
 import { GetAvailableCashUseCase } from '../../portfolio/application/get-available-cash.use-case';
 import { GetAvailableSellSizeUseCase } from '../../portfolio/application/get-available-sell-size.use-case';
-import { GetLatestCloseUseCase } from '../../portfolio/application/get-latest-close.use-case';
 import { Order } from '../domain/order';
 import { NewOrder, OrderRepository } from '../domain/order.repository';
 import {
@@ -27,13 +27,13 @@ describe('SubmitOrderUseCase', () => {
   };
   const availableCash = { execute: jest.fn() };
   const availableSellSize = { execute: jest.fn() };
-  const latestClose = { execute: jest.fn() };
+  const marketData = { getLatestPrices: jest.fn() };
   const useCase = new SubmitOrderUseCase(
     orders as unknown as OrderRepository,
     instruments as unknown as InstrumentRepository,
     availableCash as unknown as GetAvailableCashUseCase,
     availableSellSize as unknown as GetAvailableSellSizeUseCase,
-    latestClose as unknown as GetLatestCloseUseCase,
+    marketData as unknown as MarketDataRepository,
   );
 
   const stock = {
@@ -58,7 +58,7 @@ describe('SubmitOrderUseCase', () => {
     instruments.findById.mockReset();
     availableCash.execute.mockReset();
     availableSellSize.execute.mockReset();
-    latestClose.execute.mockReset();
+    marketData.getLatestPrices.mockReset();
 
     orders.userExists.mockResolvedValue(true);
     orders.executeWithUserLock.mockImplementation(
@@ -68,13 +68,15 @@ describe('SubmitOrderUseCase', () => {
     instruments.findById.mockResolvedValue(stock);
     availableCash.execute.mockResolvedValue('1000000');
     availableSellSize.execute.mockResolvedValue('40');
-    latestClose.execute.mockResolvedValue('930.00');
+    marketData.getLatestPrices.mockResolvedValue([
+      { instrumentId: 34, close: '930.00', previousClose: null },
+    ]);
   });
 
   it('fills a market buy at the latest close when cash covers the notional', async () => {
     const result = await useCase.execute(buy({ type: 'MARKET', quantity: 2 }));
 
-    expect(latestClose.execute).toHaveBeenCalledWith(34);
+    expect(marketData.getLatestPrices).toHaveBeenCalledWith([34]);
     expect(availableCash.execute).toHaveBeenCalledWith(7);
     expect(availableSellSize.execute).not.toHaveBeenCalled();
     expect(orders.insert).toHaveBeenCalledWith(
@@ -143,7 +145,7 @@ describe('SubmitOrderUseCase', () => {
     );
 
     expect(result.status).toBe('REJECTED');
-    expect(latestClose.execute).not.toHaveBeenCalled();
+    expect(marketData.getLatestPrices).not.toHaveBeenCalled();
     expect(orders.insert).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'REJECTED', price: '930.00' }),
     );
@@ -252,12 +254,14 @@ describe('SubmitOrderUseCase', () => {
   });
 
   it('does not persist a market order when the latest close is missing or not positive', async () => {
-    latestClose.execute.mockResolvedValue(null);
+    marketData.getLatestPrices.mockResolvedValue([]);
     await expect(useCase.execute(buy({ type: 'MARKET', quantity: 1 }))).rejects.toBeInstanceOf(
       MarketPriceUnavailableError,
     );
 
-    latestClose.execute.mockResolvedValue('0.00');
+    marketData.getLatestPrices.mockResolvedValue([
+      { instrumentId: 34, close: '0.00', previousClose: null },
+    ]);
     await expect(useCase.execute(buy({ type: 'MARKET', quantity: 1 }))).rejects.toBeInstanceOf(
       MarketPriceUnavailableError,
     );
@@ -272,7 +276,7 @@ describe('SubmitOrderUseCase', () => {
       transfer({ side: 'CASH_IN', amount: '25000' }),
     );
 
-    expect(latestClose.execute).not.toHaveBeenCalled();
+    expect(marketData.getLatestPrices).not.toHaveBeenCalled();
     expect(availableCash.execute).not.toHaveBeenCalled();
     expect(orders.insert).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -35,14 +35,6 @@ npm run start:dev
 
 ### Órdenes
 
-* `POST /api/v1/orders` acepta compras y ventas (`BUY`, `SELL`) y transferencias (`CASH_IN`, `CASH_OUT`). `POST /api/v1/orders/:orderId/cancel` con `{ userId }` cancela solo una orden `NEW` de ese usuario. Si la orden no existe o es de otro usuario, responde 404. Si existe y no está `NEW`, responde 409.
+* Para ordenes de tipo `LIMIT`, si el `price` de ejecución supera o es inferior al último close según corresponde (`SELL` o `BUY`), la orden queda `NEW` igualmente. Ya que para el alcance de este challenge no estamos simulando el mercado, también se agrega el supuesto de no simular las ejecuciones. Si las ordenes son válidas más allá del price, quedan en `NEW` como es requerido. Ejemplo: `Se envia una orden BUY con LIMIT 100.00, pero el ultimo close de dicho activo es 95.00`
 
-* Una transferencia usa el instrumento de tipo `MONEDA`. El cliente envía el monto en pesos (`amount`), sin cantidad de acciones ni precio. Se guarda como orden `MARKET` con `price` `1.00` y `size` igual al monto, que es lo que el saldo ya suma o resta. `CASH_IN` queda `FILLED` en el acto. `CASH_OUT` queda `FILLED` si el efectivo disponible alcanza, y `REJECTED` si no. El disponible ya descuenta las compras `LIMIT` en `NEW`, así que una salida no puede usar plata reservada.
-
-* Una `MARKET` usa el último `close` y, si alcanza el efectivo o la tenencia, queda `FILLED` en el acto. Una `LIMIT` no se ejecuta sola: si la validación pasa queda `NEW` al precio enviado, aunque el close ya sea mejor que ese límite. No hay matcher ni ejecución parcial.
-
-* Si no alcanza el efectivo (compra) o la tenencia (venta), la orden igual se persiste, en `REJECTED`. No hay columna de motivo. Un pedido mal formado, un instrumento que no es acción, un close ausente o un monto que no cubre una acción no se persisten.
-
-* El cliente envía una cantidad entera de acciones o un monto en pesos, no ambos. El monto se convierte con `floor(monto / precio)` y no se recorta por el saldo ni por la tenencia. Después se valida el efectivo o la tenencia sobre esa cantidad.
-
-* Una `SELL` `LIMIT` en `NEW` reserva esas acciones. La tenencia disponible es la posición neta `FILLED` menos las `SELL` `LIMIT` `NEW` del mismo instrumento, así una segunda venta no puede superar lo que todavía no se ejecutó. Cancelar la orden la saca de `NEW` y libera la reserva. El portfolio sigue mostrando `netSize` como la tenencia ejecutada: no expone las acciones reservadas, del mismo modo que `cashBalanceArs` no descuenta la reserva de las compras límite.
+* Una `SELL` `LIMIT` en `NEW` reserva esas acciones. La tenencia disponible es la posición neta `FILLED` menos las `SELL` `LIMIT` `NEW` del mismo instrumento, así una segunda venta no puede superar lo que todavía no se ejecutó. Cancelar la orden la saca de `NEW` y libera la reserva. Ejemplo: `Se tiene 40 de size de un activo, se decide realizar una orden de SELL LIMIT con 30, por lo que quedan 10 de dicho activo disponibles para operar`

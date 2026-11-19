@@ -1,12 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { and, desc, eq, inArray, sql } from 'drizzle-orm';
-import { instruments } from '../../../instruments/infrastructure/persistence/instruments.table';
-import { marketdata } from '../../../instruments/infrastructure/persistence/marketdata.table';
-import { orders } from '../../../orders/infrastructure/persistence/orders.table';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { DatabaseConnection } from '../../../../shared/infrastructure/database/database.connection';
+import { orders } from '../../../orders/infrastructure/persistence/orders.table';
 import {
   InstrumentPosition,
-  InstrumentPrice,
   PortfolioRepository,
 } from '../../domain/portfolio.repository';
 
@@ -96,24 +93,5 @@ export class DrizzlePortfolioRepository extends PortfolioRepository {
         ),
       )
       .groupBy(orders.instrumentId);
-  }
-
-  async getLatestPrices(instrumentIds: number[]): Promise<InstrumentPrice[]> {
-    if (instrumentIds.length === 0) {
-      return [];
-    }
-
-    return this.database.db
-      .selectDistinctOn([marketdata.instrumentId], {
-        instrumentId: marketdata.instrumentId,
-        close: marketdata.close,
-        previousClose: marketdata.previousClose,
-        ticker: instruments.ticker,
-        name: instruments.name,
-      })
-      .from(marketdata)
-      .leftJoin(instruments, eq(instruments.id, marketdata.instrumentId))
-      .where(inArray(marketdata.instrumentId, instrumentIds))
-      .orderBy(marketdata.instrumentId, desc(marketdata.date));
   }
 }

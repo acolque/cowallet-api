@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { and, asc, eq, or, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, or, sql } from 'drizzle-orm';
 import { DatabaseConnection } from '../../../../shared/infrastructure/database/database.connection';
 import { Instrument } from '../../domain/instrument';
 import {
@@ -65,5 +65,21 @@ export class DrizzleInstrumentRepository extends InstrumentRepository {
       .limit(1);
 
     return row ?? null;
+  }
+
+  async findByIds(ids: number[]): Promise<Instrument[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    return this.database.db
+      .select({
+        id: instruments.id,
+        ticker: instruments.ticker,
+        name: instruments.name,
+        type: instruments.type,
+      })
+      .from(instruments)
+      .where(inArray(instruments.id, ids));
   }
 }
