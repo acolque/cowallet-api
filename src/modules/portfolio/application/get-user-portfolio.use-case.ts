@@ -8,14 +8,14 @@ import {
 } from '../../../shared/domain/decimal';
 import { InstrumentRepository } from '../../instruments/domain/instrument.repository';
 import { MarketDataRepository } from '../../instruments/domain/market-data.repository';
+import { OrderReadRepository } from '../../orders/domain/order-read.repository';
 import { availableCashArs } from '../domain/available-cash';
-import { PortfolioRepository } from '../domain/portfolio.repository';
 import { UserPortfolio } from '../domain/user-portfolio';
 
 @Injectable()
 export class GetUserPortfolioUseCase {
   constructor(
-    private readonly portfolioRepository: PortfolioRepository,
+    private readonly orderRead: OrderReadRepository,
     private readonly marketData: MarketDataRepository,
     private readonly instruments: InstrumentRepository,
     @InjectPinoLogger(GetUserPortfolioUseCase.name)
@@ -24,9 +24,9 @@ export class GetUserPortfolioUseCase {
 
   async execute(userId: number): Promise<UserPortfolio> {
     const [cashBalanceArs, reservedBuyCashArs, positions] = await Promise.all([
-      this.portfolioRepository.getCashBalanceArs(userId),
-      this.portfolioRepository.getReservedBuyCashArs(userId),
-      this.portfolioRepository.getNetInstrumentPositions(userId),
+      this.orderRead.sumFilledCashEffect(userId),
+      this.orderRead.sumOpenLimitBuyNotional(userId),
+      this.orderRead.netFilledSizeByInstrument(userId),
     ]);
 
     const valuedPositions = positions.filter((position) => {

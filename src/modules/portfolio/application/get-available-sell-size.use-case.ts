@@ -1,20 +1,20 @@
 import { Injectable } from '@nestjs/common';
+import { OrderReadRepository } from '../../orders/domain/order-read.repository';
 import { availableSellSize } from '../domain/available-sell-size';
-import { PortfolioRepository } from '../domain/portfolio.repository';
 
 @Injectable()
 export class GetAvailableSellSizeUseCase {
-  constructor(private readonly portfolio: PortfolioRepository) {}
+  constructor(private readonly orderRead: OrderReadRepository) {}
 
   async execute(userId: number, instrumentId: number): Promise<string> {
-    const [positions, reservedSellSize] = await Promise.all([
-      this.portfolio.getNetInstrumentPositions(userId),
-      this.portfolio.getReservedSellSize(userId, instrumentId),
+    const [positions, openLimitSellSize] = await Promise.all([
+      this.orderRead.netFilledSizeByInstrument(userId),
+      this.orderRead.sumOpenLimitSellSize(userId, instrumentId),
     ]);
     const netSize =
       positions.find((position) => position.instrumentId === instrumentId)
         ?.netSize ?? '0';
 
-    return availableSellSize(netSize, reservedSellSize);
+    return availableSellSize(netSize, openLimitSellSize);
   }
 }
