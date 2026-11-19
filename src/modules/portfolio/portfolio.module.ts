@@ -1,30 +1,13 @@
 import { Module } from '@nestjs/common';
-import { GetAvailableCashUseCase } from './application/get-available-cash.use-case';
-import { GetAvailableSellSizeUseCase } from './application/get-available-sell-size.use-case';
-import { GetLatestCloseUseCase } from './application/get-latest-close.use-case';
+import { InstrumentsModule } from '../instruments/instruments.module';
+import { OrderReadModule } from '../orders/order-read.module';
 import { GetUserPortfolioUseCase } from './application/get-user-portfolio.use-case';
-import { PortfolioRepository } from './domain/portfolio.repository';
 import { PortfolioController } from './infrastructure/http/portfolio.controller';
-import { DrizzlePortfolioRepository } from './infrastructure/persistence/drizzle-portfolio.repository';
 import { PortfolioModuleStatusAdapter } from './infrastructure/portfolio-module-status.adapter';
 
 @Module({
+  imports: [InstrumentsModule, OrderReadModule],
   controllers: [PortfolioController],
-  providers: [
-    PortfolioModuleStatusAdapter,
-    GetUserPortfolioUseCase,
-    GetAvailableCashUseCase,
-    GetAvailableSellSizeUseCase,
-    GetLatestCloseUseCase,
-    {
-      provide: PortfolioRepository,
-      useClass: DrizzlePortfolioRepository,
-    },
-  ],
-  exports: [
-    GetAvailableCashUseCase,
-    GetAvailableSellSizeUseCase,
-    GetLatestCloseUseCase,
-  ],
+  providers: [PortfolioModuleStatusAdapter, GetUserPortfolioUseCase],
 })
 export class PortfolioModule {}

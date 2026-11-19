@@ -1,25 +1,22 @@
 import { Injectable } from '@nestjs/common';
-import { and, desc, eq, inArray, sql } from 'drizzle-orm';
-import { instruments } from '../../../instruments/infrastructure/persistence/instruments.table';
-import { marketdata } from '../../../instruments/infrastructure/persistence/marketdata.table';
-import { orders } from '../../../orders/infrastructure/persistence/orders.table';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { DatabaseConnection } from '../../../../shared/infrastructure/database/database.connection';
 import {
-  InstrumentPosition,
-  InstrumentPrice,
-  PortfolioRepository,
-} from '../../domain/portfolio.repository';
+  FilledInstrumentSize,
+  OrderReadRepository,
+} from '../../domain/order-read.repository';
+import { orders } from './orders.table';
 
 @Injectable()
-export class DrizzlePortfolioRepository extends PortfolioRepository {
+export class DrizzleOrderReadRepository extends OrderReadRepository {
   constructor(private readonly database: DatabaseConnection) {
     super();
   }
 
-  async getCashBalanceArs(userId: number): Promise<string> {
+  async sumFilledCashEffect(userId: number): Promise<string> {
     const [row] = await this.database.db
       .select({
-        cashBalanceArs: sql<string>`coalesce(sum(
+        cashEffect: sql<string>`coalesce(sum(
           case
             when ${orders.side} = 'CASH_IN' then ${orders.size}
             when ${orders.side} = 'CASH_OUT' then -${orders.size}
@@ -32,13 +29,13 @@ export class DrizzlePortfolioRepository extends PortfolioRepository {
       .from(orders)
       .where(and(eq(orders.userId, userId), eq(orders.status, 'FILLED')));
 
-    return row?.cashBalanceArs ?? '0';
+    return row?.cashEffect ?? '0';
   }
 
-  async getReservedBuyCashArs(userId: number): Promise<string> {
+  async sumOpenLimitBuyNotional(userId: number): Promise<string> {
     const [row] = await this.database.db
       .select({
-        reservedCashArs: sql<string>`coalesce(sum(${orders.size} * ${orders.price}), 0)`,
+        notional: sql<string>`coalesce(sum(${orders.size} * ${orders.price}), 0)`,
       })
       .from(orders)
       .where(
@@ -50,16 +47,16 @@ export class DrizzlePortfolioRepository extends PortfolioRepository {
         ),
       );
 
-    return row?.reservedCashArs ?? '0';
+    return row?.notional ?? '0';
   }
 
-  async getReservedSellSize(
+  async sumOpenLimitSellSize(
     userId: number,
     instrumentId: number,
   ): Promise<string> {
     const [row] = await this.database.db
       .select({
-        reservedSize: sql<string>`coalesce(sum(${orders.size}), 0)`,
+        size: sql<string>`coalesce(sum(${orders.size}), 0)`,
       })
       .from(orders)
       .where(
@@ -72,10 +69,12 @@ export class DrizzlePortfolioRepository extends PortfolioRepository {
         ),
       );
 
-    return String(row?.reservedSize ?? '0');
+    return String(row?.size ?? '0');
   }
 
-  async getNetInstrumentPositions(userId: number): Promise<InstrumentPosition[]> {
+  async netFilledSizeByInstrument(
+    userId: number,
+  ): Promise<FilledInstrumentSize[]> {
     return this.database.db
       .select({
         instrumentId: orders.instrumentId,
@@ -96,24 +95,5 @@ export class DrizzlePortfolioRepository extends PortfolioRepository {
         ),
       )
       .groupBy(orders.instrumentId);
-  }
-
-  async getLatestPrices(instrumentIds: number[]): Promise<InstrumentPrice[]> {
-    if (instrumentIds.length === 0) {
-      return [];
-    }
-
-    return this.database.db
-      .selectDistinctOn([marketdata.instrumentId], {
-        instrumentId: marketdata.instrumentId,
-        close: marketdata.close,
-        previousClose: marketdata.previousClose,
-        ticker: instruments.ticker,
-        name: instruments.name,
-      })
-      .from(marketdata)
-      .leftJoin(instruments, eq(instruments.id, marketdata.instrumentId))
-      .where(inArray(marketdata.instrumentId, instrumentIds))
-      .orderBy(marketdata.instrumentId, desc(marketdata.date));
   }
 }

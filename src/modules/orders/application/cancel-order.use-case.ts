@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Order } from '../domain/order';
+import { InvalidOrderTransitionError, Order } from '../domain/order';
 import { OrderRepository } from '../domain/order.repository';
 import {
   InvalidOrderRequestError,
@@ -28,6 +28,15 @@ export class CancelOrderUseCase {
       const existing = await this.orders.findById(orderId);
       if (existing === null || existing.userId !== userId) {
         throw new OrderNotFoundError();
+      }
+
+      try {
+        existing.cancel();
+      } catch (error) {
+        if (error instanceof InvalidOrderTransitionError) {
+          throw new OrderNotCancellableError();
+        }
+        throw error;
       }
 
       throw new OrderNotCancellableError();

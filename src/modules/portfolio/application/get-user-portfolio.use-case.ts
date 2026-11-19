@@ -6,23 +6,27 @@ import {
   multiplyDecimal,
   percentageChange,
 } from '../../../shared/domain/decimal';
-import { availableCashArs } from '../domain/available-cash';
-import { PortfolioRepository } from '../domain/portfolio.repository';
+import { InstrumentRepository } from '../../instruments/domain/instrument.repository';
+import { MarketDataRepository } from '../../instruments/domain/market-data.repository';
+import { availableCashArs } from '../../orders/domain/available-cash';
+import { OrderReadRepository } from '../../orders/domain/order-read.repository';
 import { UserPortfolio } from '../domain/user-portfolio';
 
 @Injectable()
 export class GetUserPortfolioUseCase {
   constructor(
-    private readonly portfolioRepository: PortfolioRepository,
+    private readonly orderRead: OrderReadRepository,
+    private readonly marketData: MarketDataRepository,
+    private readonly instruments: InstrumentRepository,
     @InjectPinoLogger(GetUserPortfolioUseCase.name)
     private readonly logger: PinoLogger,
   ) {}
 
   async execute(userId: number): Promise<UserPortfolio> {
     const [cashBalanceArs, reservedBuyCashArs, positions] = await Promise.all([
-      this.portfolioRepository.getCashBalanceArs(userId),
-      this.portfolioRepository.getReservedBuyCashArs(userId),
-      this.portfolioRepository.getNetInstrumentPositions(userId),
+      this.orderRead.sumFilledCashEffect(userId),
+      this.orderRead.sumOpenLimitBuyNotional(userId),
+      this.orderRead.netFilledSizeByInstrument(userId),
     ]);
 
     const valuedPositions = positions.filter((position) => {
@@ -41,11 +45,18 @@ export class GetUserPortfolioUseCase {
       return false;
     });
 
-    const prices = await this.portfolioRepository.getLatestPrices(
-      valuedPositions.map((position) => position.instrumentId),
+    const instrumentIds = valuedPositions.map(
+      (position) => position.instrumentId,
     );
+    const [prices, instruments] = await Promise.all([
+      this.marketData.getLatestPrices(instrumentIds),
+      this.instruments.findByIds(instrumentIds),
+    ]);
     const priceByInstrument = new Map(
       prices.map((price) => [price.instrumentId, price]),
+    );
+    const instrumentById = new Map(
+      instruments.map((instrument) => [instrument.id, instrument]),
     );
 
     const assets = valuedPositions.flatMap((position) => {
@@ -54,11 +65,13 @@ export class GetUserPortfolioUseCase {
         return [];
       }
 
+      const instrument = instrumentById.get(position.instrumentId);
+
       return [
         {
           instrumentId: position.instrumentId,
-          ticker: price.ticker,
-          name: price.name,
+          ticker: instrument?.ticker ?? null,
+          name: instrument?.name ?? null,
           netSize: position.netSize,
           positionValueArs: multiplyDecimal(position.netSize, price.close),
           dailyReturnPercentage: percentageChange(
