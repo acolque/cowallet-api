@@ -6,9 +6,10 @@ import {
 } from '../../../shared/domain/decimal';
 import { InstrumentRepository } from '../../instruments/domain/instrument.repository';
 import { MarketDataRepository } from '../../instruments/domain/market-data.repository';
-import { GetAvailableCashUseCase } from '../../portfolio/application/get-available-cash.use-case';
-import { GetAvailableSellSizeUseCase } from '../../portfolio/application/get-available-sell-size.use-case';
+import { availableCashArs } from '../domain/available-cash';
+import { availableSellSize } from '../domain/available-sell-size';
 import { Order, OrderSide, OrderType } from '../domain/order';
+import { OrderReadRepository } from '../domain/order-read.repository';
 import { OrderRepository } from '../domain/order.repository';
 import {
   AmountBelowOneShareError,
@@ -46,8 +47,7 @@ export class SubmitOrderUseCase {
   constructor(
     private readonly orderRepository: OrderRepository,
     private readonly instrumentRepository: InstrumentRepository,
-    private readonly getAvailableCash: GetAvailableCashUseCase,
-    private readonly getAvailableSellSize: GetAvailableSellSizeUseCase,
+    private readonly orderRead: OrderReadRepository,
     private readonly marketData: MarketDataRepository,
   ) {}
 
@@ -173,8 +173,17 @@ export class SubmitOrderUseCase {
   }
 
   private async hasEnoughCash(userId: number, required: string): Promise<boolean> {
-    const available = await this.getAvailableCash.execute(userId);
-    return compareDecimal(required, available) <= 0;
+    const [filledCashEffect, openLimitBuyNotional] = await Promise.all([
+      this.orderRead.sumFilledCashEffect(userId),
+      this.orderRead.sumOpenLimitBuyNotional(userId),
+    ]);
+
+    return (
+      compareDecimal(
+        required,
+        availableCashArs(filledCashEffect, openLimitBuyNotional),
+      ) <= 0
+    );
   }
 
   private async hasEnoughShares(
@@ -182,11 +191,20 @@ export class SubmitOrderUseCase {
     instrumentId: number,
     size: number,
   ): Promise<boolean> {
-    const available = await this.getAvailableSellSize.execute(
-      userId,
-      instrumentId,
+    const [positions, openLimitSellSize] = await Promise.all([
+      this.orderRead.netFilledSizeByInstrument(userId),
+      this.orderRead.sumOpenLimitSellSize(userId, instrumentId),
+    ]);
+    const netSize =
+      positions.find((position) => position.instrumentId === instrumentId)
+        ?.netSize ?? '0';
+
+    return (
+      compareDecimal(
+        String(size),
+        availableSellSize(netSize, openLimitSellSize),
+      ) <= 0
     );
-    return compareDecimal(String(size), available) <= 0;
   }
 }
 
