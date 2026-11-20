@@ -47,8 +47,8 @@ export class SubmitOrderUseCase {
   constructor(
     private readonly orderRepository: OrderRepository,
     private readonly instrumentRepository: InstrumentRepository,
-    private readonly orderRead: OrderReadRepository,
-    private readonly marketData: MarketDataRepository,
+    private readonly orderReadRepository: OrderReadRepository,
+    private readonly marketDataRepository: MarketDataRepository,
   ) {}
 
   execute(input: SubmitOrderInput): Promise<Order> {
@@ -125,7 +125,7 @@ export class SubmitOrderUseCase {
             input.userId,
             multiplyDecimal(String(size), price),
           )
-        : await this.hasEnoughShares(input.userId, input.instrumentId, size);
+        : await this.hasEnoughInstruments(input.userId, input.instrumentId, size);
 
     return { accepted, size, price };
   }
@@ -147,7 +147,7 @@ export class SubmitOrderUseCase {
       return input.price ?? '';
     }
 
-    const [price] = await this.marketData.getLatestPrices([input.instrumentId]);
+    const [price] = await this.marketDataRepository.getLatestPrices([input.instrumentId]);
     const close = price?.close ?? null;
     if (close === null || compareDecimal(close, '0') <= 0) {
       throw new MarketPriceUnavailableError();
@@ -174,8 +174,8 @@ export class SubmitOrderUseCase {
 
   private async hasEnoughCash(userId: number, required: string): Promise<boolean> {
     const [filledCashEffect, openLimitBuyNotional] = await Promise.all([
-      this.orderRead.sumFilledCashEffect(userId),
-      this.orderRead.sumOpenLimitBuyNotional(userId),
+      this.orderReadRepository.sumFilledOrders(userId),
+      this.orderReadRepository.sumLimitBuyOrders(userId),
     ]);
 
     return (
@@ -186,14 +186,14 @@ export class SubmitOrderUseCase {
     );
   }
 
-  private async hasEnoughShares(
+  private async hasEnoughInstruments(
     userId: number,
     instrumentId: number,
     size: number,
   ): Promise<boolean> {
     const [positions, openLimitSellSize] = await Promise.all([
-      this.orderRead.netFilledSizeByInstrument(userId),
-      this.orderRead.sumOpenLimitSellSize(userId, instrumentId),
+      this.orderReadRepository.netFilledSizeByInstrument(userId),
+      this.orderReadRepository.sumLimitSellSizeOrders(userId, instrumentId),
     ]);
     const netSize =
       positions.find((position) => position.instrumentId === instrumentId)

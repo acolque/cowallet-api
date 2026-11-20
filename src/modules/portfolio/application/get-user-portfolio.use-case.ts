@@ -25,8 +25,8 @@ export class GetUserPortfolioUseCase {
 
   async execute(userId: number): Promise<UserPortfolio> {
     const [cashBalanceArs, reservedBuyCashArs, positions] = await Promise.all([
-      this.orderRead.sumFilledCashEffect(userId),
-      this.orderRead.sumOpenLimitBuyNotional(userId),
+      this.orderRead.sumFilledOrders(userId),
+      this.orderRead.sumLimitBuyOrders(userId),
       this.orderRead.netFilledSizeByInstrument(userId),
     ]);
 

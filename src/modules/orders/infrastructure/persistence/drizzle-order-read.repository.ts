@@ -13,7 +13,7 @@ export class DrizzleOrderReadRepository extends OrderReadRepository {
     super();
   }
 
-  async sumFilledCashEffect(userId: number): Promise<string> {
+  async sumFilledOrders(userId: number): Promise<string> {
     const [row] = await this.database.db
       .select({
         cashEffect: sql<string>`coalesce(sum(
@@ -32,7 +32,7 @@ export class DrizzleOrderReadRepository extends OrderReadRepository {
     return row?.cashEffect ?? '0';
   }
 
-  async sumOpenLimitBuyNotional(userId: number): Promise<string> {
+  async sumLimitBuyOrders(userId: number): Promise<string> {
     const [row] = await this.database.db
       .select({
         notional: sql<string>`coalesce(sum(${orders.size} * ${orders.price}), 0)`,
@@ -50,7 +50,7 @@ export class DrizzleOrderReadRepository extends OrderReadRepository {
     return row?.notional ?? '0';
   }
 
-  async sumOpenLimitSellSize(
+  async sumLimitSellSizeOrders(
     userId: number,
     instrumentId: number,
   ): Promise<string> {

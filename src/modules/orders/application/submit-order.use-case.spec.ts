@@ -25,9 +25,9 @@ describe('SubmitOrderUseCase', () => {
     findById: jest.fn(),
   };
   const orderRead = {
-    sumFilledCashEffect: jest.fn(),
-    sumOpenLimitBuyNotional: jest.fn(),
-    sumOpenLimitSellSize: jest.fn(),
+    sumFilledOrders: jest.fn(),
+    sumLimitBuyOrders: jest.fn(),
+    sumLimitSellSizeOrders: jest.fn(),
     netFilledSizeByInstrument: jest.fn(),
   };
   const marketData = { getLatestPrices: jest.fn() };
@@ -58,9 +58,9 @@ describe('SubmitOrderUseCase', () => {
     orders.cancelIfNew.mockReset();
     orders.executeWithUserLock.mockReset();
     instruments.findById.mockReset();
-    orderRead.sumFilledCashEffect.mockReset();
-    orderRead.sumOpenLimitBuyNotional.mockReset();
-    orderRead.sumOpenLimitSellSize.mockReset();
+    orderRead.sumFilledOrders.mockReset();
+    orderRead.sumLimitBuyOrders.mockReset();
+    orderRead.sumLimitSellSizeOrders.mockReset();
     orderRead.netFilledSizeByInstrument.mockReset();
     marketData.getLatestPrices.mockReset();
 
@@ -70,9 +70,9 @@ describe('SubmitOrderUseCase', () => {
     );
     orders.insert.mockImplementation(async (draft: NewOrder) => persisted(draft));
     instruments.findById.mockResolvedValue(stock);
-    orderRead.sumFilledCashEffect.mockResolvedValue('1000000');
-    orderRead.sumOpenLimitBuyNotional.mockResolvedValue('0');
-    orderRead.sumOpenLimitSellSize.mockResolvedValue('0');
+    orderRead.sumFilledOrders.mockResolvedValue('1000000');
+    orderRead.sumLimitBuyOrders.mockResolvedValue('0');
+    orderRead.sumLimitSellSizeOrders.mockResolvedValue('0');
     orderRead.netFilledSizeByInstrument.mockResolvedValue([
       { instrumentId: 34, netSize: '40' },
     ]);
@@ -85,9 +85,9 @@ describe('SubmitOrderUseCase', () => {
     const result = await useCase.execute(buy({ type: 'MARKET', quantity: 2 }));
 
     expect(marketData.getLatestPrices).toHaveBeenCalledWith([34]);
-    expect(orderRead.sumFilledCashEffect).toHaveBeenCalledWith(7);
-    expect(orderRead.sumOpenLimitBuyNotional).toHaveBeenCalledWith(7);
-    expect(orderRead.sumOpenLimitSellSize).not.toHaveBeenCalled();
+    expect(orderRead.sumFilledOrders).toHaveBeenCalledWith(7);
+    expect(orderRead.sumLimitBuyOrders).toHaveBeenCalledWith(7);
+    expect(orderRead.sumLimitSellSizeOrders).not.toHaveBeenCalled();
     expect(orderRead.netFilledSizeByInstrument).not.toHaveBeenCalled();
     expect(orders.insert).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -118,11 +118,11 @@ describe('SubmitOrderUseCase', () => {
         return result;
       },
     );
-    orderRead.sumFilledCashEffect.mockImplementation(async () => {
+    orderRead.sumFilledOrders.mockImplementation(async () => {
       steps.push('filled-cash');
       return '1000000';
     });
-    orderRead.sumOpenLimitBuyNotional.mockImplementation(async () => {
+    orderRead.sumLimitBuyOrders.mockImplementation(async () => {
       steps.push('reserved-cash');
       return '0';
     });
@@ -143,7 +143,7 @@ describe('SubmitOrderUseCase', () => {
   });
 
   it('persists a market buy as REJECTED when available cash is short', async () => {
-    orderRead.sumFilledCashEffect.mockResolvedValue('1000');
+    orderRead.sumFilledOrders.mockResolvedValue('1000');
 
     const result = await useCase.execute(buy({ type: 'MARKET', quantity: 5 }));
 
@@ -158,7 +158,7 @@ describe('SubmitOrderUseCase', () => {
   });
 
   it('persists a limit buy as REJECTED without leaving it NEW when cash is short', async () => {
-    orderRead.sumFilledCashEffect.mockResolvedValue('1000');
+    orderRead.sumFilledOrders.mockResolvedValue('1000');
 
     const result = await useCase.execute(
       buy({ type: 'LIMIT', quantity: 5, price: '930.00' }),
@@ -206,16 +206,16 @@ describe('SubmitOrderUseCase', () => {
     );
 
     expect(orderRead.netFilledSizeByInstrument).toHaveBeenCalledWith(7);
-    expect(orderRead.sumOpenLimitSellSize).toHaveBeenCalledWith(7, 34);
-    expect(orderRead.sumFilledCashEffect).not.toHaveBeenCalled();
-    expect(orderRead.sumOpenLimitBuyNotional).not.toHaveBeenCalled();
+    expect(orderRead.sumLimitSellSizeOrders).toHaveBeenCalledWith(7, 34);
+    expect(orderRead.sumFilledOrders).not.toHaveBeenCalled();
+    expect(orderRead.sumLimitBuyOrders).not.toHaveBeenCalled();
     expect(result).toEqual(
       expect.objectContaining({ status: 'NEW', size: 30, side: 'SELL' }),
     );
   });
 
   it('rejects a second limit sell of 20 when only 10 shares remain available', async () => {
-    orderRead.sumOpenLimitSellSize.mockResolvedValue('30');
+    orderRead.sumLimitSellSizeOrders.mockResolvedValue('30');
 
     const result = await useCase.execute(
       sell({ type: 'LIMIT', quantity: 20, price: '960.00' }),
@@ -231,7 +231,7 @@ describe('SubmitOrderUseCase', () => {
     orderRead.netFilledSizeByInstrument.mockResolvedValue([
       { instrumentId: 34, netSize: '40' },
     ]);
-    orderRead.sumOpenLimitSellSize.mockResolvedValue('0');
+    orderRead.sumLimitSellSizeOrders.mockResolvedValue('0');
 
     const result = await useCase.execute(
       sell({ type: 'LIMIT', quantity: 20, price: '960.00' }),
@@ -241,7 +241,7 @@ describe('SubmitOrderUseCase', () => {
   });
 
   it('rejects a market sell that exceeds shares reserved by an open limit sell', async () => {
-    orderRead.sumOpenLimitSellSize.mockResolvedValue('30');
+    orderRead.sumLimitSellSizeOrders.mockResolvedValue('30');
 
     const result = await useCase.execute(sell({ type: 'MARKET', quantity: 20 }));
 
@@ -302,8 +302,8 @@ describe('SubmitOrderUseCase', () => {
     );
 
     expect(marketData.getLatestPrices).not.toHaveBeenCalled();
-    expect(orderRead.sumFilledCashEffect).not.toHaveBeenCalled();
-    expect(orderRead.sumOpenLimitBuyNotional).not.toHaveBeenCalled();
+    expect(orderRead.sumFilledOrders).not.toHaveBeenCalled();
+    expect(orderRead.sumLimitBuyOrders).not.toHaveBeenCalled();
     expect(orders.insert).toHaveBeenCalledWith(
       expect.objectContaining({
         size: 25000,
@@ -318,14 +318,14 @@ describe('SubmitOrderUseCase', () => {
 
   it('fills an outgoing transfer when available cash covers the amount', async () => {
     instruments.findById.mockResolvedValue(currency);
-    orderRead.sumFilledCashEffect.mockResolvedValue('30000.00');
+    orderRead.sumFilledOrders.mockResolvedValue('30000.00');
 
     const result = await useCase.execute(
       transfer({ side: 'CASH_OUT', amount: '25000' }),
     );
 
-    expect(orderRead.sumFilledCashEffect).toHaveBeenCalledWith(7);
-    expect(orderRead.sumOpenLimitBuyNotional).toHaveBeenCalledWith(7);
+    expect(orderRead.sumFilledOrders).toHaveBeenCalledWith(7);
+    expect(orderRead.sumLimitBuyOrders).toHaveBeenCalledWith(7);
     expect(result).toEqual(
       expect.objectContaining({ status: 'FILLED', size: 25000, side: 'CASH_OUT' }),
     );
@@ -333,7 +333,7 @@ describe('SubmitOrderUseCase', () => {
 
   it('rejects an outgoing transfer that would spend reserved cash', async () => {
     instruments.findById.mockResolvedValue(currency);
-    orderRead.sumFilledCashEffect.mockResolvedValue('10000');
+    orderRead.sumFilledOrders.mockResolvedValue('10000');
 
     const result = await useCase.execute(
       transfer({ side: 'CASH_OUT', amount: '25000' }),

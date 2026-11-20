@@ -6,9 +6,9 @@ import { GetUserPortfolioUseCase } from './get-user-portfolio.use-case';
 
 describe('GetUserPortfolioUseCase', () => {
   const orderRead = {
-    sumFilledCashEffect: jest.fn(),
-    sumOpenLimitBuyNotional: jest.fn(),
-    sumOpenLimitSellSize: jest.fn(),
+    sumFilledOrders: jest.fn(),
+    sumLimitBuyOrders: jest.fn(),
+    sumLimitSellSizeOrders: jest.fn(),
     netFilledSizeByInstrument: jest.fn(),
   };
   const marketData = { getLatestPrices: jest.fn() };
@@ -26,16 +26,16 @@ describe('GetUserPortfolioUseCase', () => {
   );
 
   beforeEach(() => {
-    orderRead.sumFilledCashEffect.mockReset();
-    orderRead.sumOpenLimitBuyNotional.mockReset();
-    orderRead.sumOpenLimitSellSize.mockReset();
+    orderRead.sumFilledOrders.mockReset();
+    orderRead.sumLimitBuyOrders.mockReset();
+    orderRead.sumLimitSellSizeOrders.mockReset();
     orderRead.netFilledSizeByInstrument.mockReset();
     marketData.getLatestPrices.mockReset();
     instruments.findByIds.mockReset();
     logger.error.mockReset();
 
-    orderRead.sumFilledCashEffect.mockResolvedValue('1500.00');
-    orderRead.sumOpenLimitBuyNotional.mockResolvedValue('0');
+    orderRead.sumFilledOrders.mockResolvedValue('1500.00');
+    orderRead.sumLimitBuyOrders.mockResolvedValue('0');
   });
 
   it('omits instruments whose net size is zero', async () => {

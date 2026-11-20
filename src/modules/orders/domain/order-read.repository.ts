@@ -4,9 +4,9 @@ export interface FilledInstrumentSize {
 }
 
 export abstract class OrderReadRepository {
-  abstract sumFilledCashEffect(userId: number): Promise<string>;
-  abstract sumOpenLimitBuyNotional(userId: number): Promise<string>;
-  abstract sumOpenLimitSellSize(
+  abstract sumFilledOrders(userId: number): Promise<string>;
+  abstract sumLimitBuyOrders(userId: number): Promise<string>;
+  abstract sumLimitSellSizeOrders(
     userId: number,
     instrumentId: number,
   ): Promise<string>;
