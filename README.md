@@ -2,7 +2,7 @@
 
 Cocos Backend Challenge
 
-## techs
+## Techs
 * API NestJS sobre Fastify, con arquitectura hexagonal por módulo.
 * Drizzle como ORM
 * PostgresSQL DB
@@ -28,11 +28,6 @@ npm run start:dev
 
 `GET http://localhost:3000/health` responde `ok` cuando los tres módulos se registraron al iniciar.
 
-## Test de integración
-* Se agrega un test de integración con `testcontainers` para simular una conexión a la DB con el fin de probar un caso borde de concurrencia: `usuario 1 posee 40 de size de un instrument, envia 2 requests al mismo tiempo de SELL con LIMIT, uno con size 30 y otro con size 20. El primero en llegar debe aceptarse y el segundo esperar el impacto del primero y luego rechazarse`
-* Para esta prueba se requiere tener docker ejecutandose localmente
-* El test se excluye para el comando npm test, para ejecutarlo: `npm run test:integration`
-
 ## Supuestos
 
 ### Portfolio
@@ -48,3 +43,9 @@ npm run start:dev
 * Para ordenes de tipo `LIMIT`, si el `price` de ejecución supera o es inferior al último close según corresponde (`SELL` o `BUY`), la orden queda `NEW` igualmente. Ya que para el alcance de este challenge no estamos simulando el mercado, también se agrega el supuesto de no simular las ejecuciones. Si las ordenes son válidas más allá del price, quedan en `NEW` como es requerido. Ejemplo: `Se envia una orden BUY con LIMIT 100.00, pero el ultimo close de dicho activo es 95.00`
 
 * Una `SELL` `LIMIT` en `NEW` reserva esas acciones. La tenencia disponible es la posición neta `FILLED` menos las `SELL` `LIMIT` `NEW` del mismo instrumento, así una segunda venta no puede superar lo que todavía no se ejecutó. Cancelar la orden la saca de `NEW` y libera la reserva. Ejemplo: `Se tiene 40 de size de un activo, se decide realizar una orden de SELL LIMIT con 30, por lo que quedan 10 de dicho activo disponibles para operar`
+
+## Test de integración
+
+* Se agrega un test de integración con `testcontainers` para simular una conexión a la DB con el fin de probar un caso borde de concurrencia: `usuario 1 posee 40 de size de un instrument, envia 2 requests al mismo tiempo de SELL con LIMIT, uno con size 30 y otro con size 20. El primero en llegar debe aceptarse y el segundo esperar el impacto del primero y luego rechazarse`
+* Para esta prueba se requiere tener docker ejecutandose localmente
+* El test se excluye para el comando npm test, para ejecutarlo: `npm run test:integration`
