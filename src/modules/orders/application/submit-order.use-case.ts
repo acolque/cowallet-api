@@ -125,7 +125,7 @@ export class SubmitOrderUseCase {
             input.userId,
             multiplyDecimal(String(size), price),
           )
-        : await this.hasEnoughInstruments(input.userId, input.instrumentId, size);
+        : await this.hasEnoughSizeInstruments(input.userId, input.instrumentId, size);
 
     return { accepted, size, price };
   }
@@ -186,12 +186,12 @@ export class SubmitOrderUseCase {
     );
   }
 
-  private async hasEnoughInstruments(
+  private async hasEnoughSizeInstruments(
     userId: number,
     instrumentId: number,
     size: number,
   ): Promise<boolean> {
-    const [positions, openLimitSellSize] = await Promise.all([
+    const [positions, reservedSellSize] = await Promise.all([
       this.orderReadRepository.netFilledSizeByInstrument(userId),
       this.orderReadRepository.sumLimitSellSizeOrders(userId, instrumentId),
     ]);
@@ -202,7 +202,7 @@ export class SubmitOrderUseCase {
     return (
       compareDecimal(
         String(size),
-        availableSellSize(netSize, openLimitSellSize),
+        availableSellSize(netSize, reservedSellSize),
       ) <= 0
     );
   }
