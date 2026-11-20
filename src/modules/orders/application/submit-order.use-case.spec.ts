@@ -17,7 +17,7 @@ describe('SubmitOrderUseCase', () => {
     userExists: jest.fn(),
     insert: jest.fn(),
     findById: jest.fn(),
-    cancelIfNew: jest.fn(),
+    update: jest.fn(),
     executeWithUserLock: jest.fn(),
   };
   const instruments = {
@@ -55,7 +55,7 @@ describe('SubmitOrderUseCase', () => {
     orders.userExists.mockReset();
     orders.insert.mockReset();
     orders.findById.mockReset();
-    orders.cancelIfNew.mockReset();
+    orders.update.mockReset();
     orders.executeWithUserLock.mockReset();
     instruments.findById.mockReset();
     orderRead.sumFilledOrders.mockReset();

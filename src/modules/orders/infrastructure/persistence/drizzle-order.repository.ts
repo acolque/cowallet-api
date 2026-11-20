@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { DatabaseConnection } from '../../../../shared/infrastructure/database/database.connection';
 import { Order } from '../../domain/order';
 import { NewOrder, OrderRepository } from '../../domain/order.repository';
@@ -54,20 +54,18 @@ export class DrizzleOrderRepository extends OrderRepository {
     return row === undefined ? null : toOrder(row);
   }
 
-  async cancelIfNew(orderId: number, userId: number): Promise<Order | null> {
+  async update(order: Order): Promise<Order> {
     const [row] = await this.database.db
       .update(orders)
-      .set({ status: 'CANCELLED' })
-      .where(
-        and(
-          eq(orders.id, orderId),
-          eq(orders.userId, userId),
-          eq(orders.status, 'NEW'),
-        ),
-      )
+      .set({ status: order.status })
+      .where(eq(orders.id, order.id))
       .returning();
 
-    return row === undefined ? null : toOrder(row);
+    if (row === undefined) {
+      throw new Error('Order update did not return a row');
+    }
+
+    return toOrder(row);
   }
 
   executeWithUserLock<T>(userId: number, action: () => Promise<T>): Promise<T> {

@@ -6,7 +6,6 @@ import {
   HttpCode,
   NotFoundException,
   Param,
-  ParseIntPipe,
   Post,
   UnprocessableEntityException,
   UsePipes,
@@ -25,7 +24,7 @@ import {
   UserNotFoundError,
 } from '../../application/order.errors';
 import { SubmitOrderUseCase } from '../../application/submit-order.use-case';
-import { CancelOrderRequest } from './cancel-order.request';
+import { CancelOrderParams, CancelOrderRequest } from './cancel-order.request';
 import { OrderResponse, toOrderResponse } from './order.response';
 import { SubmitOrderRequest } from './submit-order.request';
 
@@ -62,11 +61,11 @@ export class OrdersController {
   @HttpCode(200)
   @ApiOperation({ summary: 'Cancel a NEW order for the given user' })
   cancel(
-    @Param('orderId', ParseIntPipe) orderId: number,
+    @Param() params: CancelOrderParams,
     @Body() request: CancelOrderRequest,
   ): Promise<OrderResponse> {
     return this.cancelOrder
-      .execute(orderId, request.userId)
+      .execute(params.orderId, request.userId)
       .then(toOrderResponse)
       .catch((error: unknown) => {
         throw toHttpException(error);

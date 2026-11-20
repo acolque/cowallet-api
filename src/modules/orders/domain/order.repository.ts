@@ -15,7 +15,7 @@ export abstract class OrderRepository {
   abstract userExists(userId: number): Promise<boolean>;
   abstract insert(order: NewOrder): Promise<Order>;
   abstract findById(orderId: number): Promise<Order | null>;
-  abstract cancelIfNew(orderId: number, userId: number): Promise<Order | null>;
+  abstract update(order: Order): Promise<Order>;
   abstract executeWithUserLock<T>(
     userId: number,
     action: () => Promise<T>,

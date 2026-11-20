@@ -11,14 +11,14 @@ describe('CancelOrderUseCase', () => {
     userExists: jest.fn(),
     insert: jest.fn(),
     findById: jest.fn(),
-    cancelIfNew: jest.fn(),
+    update: jest.fn(),
     executeWithUserLock: jest.fn(),
   };
   const useCase = new CancelOrderUseCase(orders as unknown as OrderRepository);
 
   beforeEach(() => {
-    orders.cancelIfNew.mockReset();
     orders.findById.mockReset();
+    orders.update.mockReset();
     orders.executeWithUserLock.mockReset();
     orders.executeWithUserLock.mockImplementation(
       (_userId: number, action: () => Promise<unknown>) => action(),
@@ -26,31 +26,35 @@ describe('CancelOrderUseCase', () => {
   });
 
   it('cancels a NEW order owned by the user', async () => {
+    const existing = order({ status: 'NEW' });
     const cancelled = order({ status: 'CANCELLED' });
-    orders.cancelIfNew.mockResolvedValue(cancelled);
+    orders.findById.mockResolvedValue(existing);
+    orders.update.mockResolvedValue(cancelled);
 
     await expect(useCase.execute(11, 7)).resolves.toBe(cancelled);
     expect(orders.executeWithUserLock).toHaveBeenCalledWith(7, expect.any(Function));
-    expect(orders.cancelIfNew).toHaveBeenCalledWith(11, 7);
-    expect(orders.findById).not.toHaveBeenCalled();
+    expect(orders.findById).toHaveBeenCalledWith(11);
+    expect(orders.update).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 11, userId: 7, status: 'CANCELLED' }),
+    );
   });
 
   it('conflicts when the order exists but is not NEW', async () => {
-    orders.cancelIfNew.mockResolvedValue(null);
     orders.findById.mockResolvedValue(order({ status: 'FILLED' }));
 
     await expect(useCase.execute(11, 7)).rejects.toBeInstanceOf(
       OrderNotCancellableError,
     );
+    expect(orders.update).not.toHaveBeenCalled();
   });
 
   it('reports not found when the order does not exist or belongs to someone else', async () => {
-    orders.cancelIfNew.mockResolvedValue(null);
     orders.findById.mockResolvedValue(null);
     await expect(useCase.execute(11, 7)).rejects.toBeInstanceOf(OrderNotFoundError);
 
     orders.findById.mockResolvedValue(order({ userId: 8, status: 'NEW' }));
     await expect(useCase.execute(11, 7)).rejects.toBeInstanceOf(OrderNotFoundError);
+    expect(orders.update).not.toHaveBeenCalled();
   });
 });
 
