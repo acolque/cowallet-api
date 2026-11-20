@@ -9,7 +9,7 @@ import {
   Min,
 } from 'class-validator';
 
-export class SearchInstrumentsQuery {
+export class SearchInstrumentsRequest {
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value), {
     toClassOnly: true,
   })

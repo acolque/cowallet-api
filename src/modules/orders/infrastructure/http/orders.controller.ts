@@ -12,6 +12,7 @@ import {
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CancelOrderUseCase } from '../../application/cancel-order.use-case';
 import {
   AmountBelowOneSizeError,
@@ -24,11 +25,12 @@ import {
   UserNotFoundError,
 } from '../../application/order.errors';
 import { SubmitOrderUseCase } from '../../application/submit-order.use-case';
-import { Order } from '../../domain/order';
-import { CancelOrderBody } from './cancel-order.body';
-import { SubmitOrderBody } from './submit-order.body';
+import { CancelOrderRequest } from './cancel-order.request';
+import { OrderResponse, toOrderResponse } from './order.response';
+import { SubmitOrderRequest } from './submit-order.request';
 
 @Controller('orders')
+@ApiTags('orders')
 @UsePipes(
   new ValidationPipe({
     transform: true,
@@ -42,21 +44,33 @@ export class OrdersController {
   ) {}
 
   @Post()
-  submit(@Body() body: SubmitOrderBody): Promise<Order> {
-    return this.submitOrder.execute(body).catch((error: unknown) => {
-      throw toHttpException(error);
-    });
+  @ApiOperation({
+    summary: 'Submit an order',
+    description:
+      'Cash transfers send a peso amount as a market order. Buy and sell send either size or amount, not both. Limit orders require a price.',
+  })
+  submit(@Body() request: SubmitOrderRequest): Promise<OrderResponse> {
+    return this.submitOrder
+      .execute(request)
+      .then(toOrderResponse)
+      .catch((error: unknown) => {
+        throw toHttpException(error);
+      });
   }
 
   @Post(':orderId/cancel')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Cancel a NEW order for the given user' })
   cancel(
     @Param('orderId', ParseIntPipe) orderId: number,
-    @Body() body: CancelOrderBody,
-  ): Promise<Order> {
-    return this.cancelOrder.execute(orderId, body.userId).catch((error: unknown) => {
-      throw toHttpException(error);
-    });
+    @Body() request: CancelOrderRequest,
+  ): Promise<OrderResponse> {
+    return this.cancelOrder
+      .execute(orderId, request.userId)
+      .then(toOrderResponse)
+      .catch((error: unknown) => {
+        throw toHttpException(error);
+      });
   }
 }
 

@@ -20,15 +20,15 @@ const PRICE = /^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/;
 @ValidatorConstraint({ name: 'submitOrderShape', async: false })
 class SubmitOrderShapeConstraint implements ValidatorConstraintInterface {
   validate(_value: unknown, args: ValidationArguments): boolean {
-    return shapeMessage(args.object as SubmitOrderBody) === null;
+    return shapeMessage(args.object as SubmitOrderRequest) === null;
   }
 
   defaultMessage(args: ValidationArguments): string {
-    return shapeMessage(args.object as SubmitOrderBody) ?? 'Invalid order';
+    return shapeMessage(args.object as SubmitOrderRequest) ?? 'Invalid order';
   }
 }
 
-export class SubmitOrderBody {
+export class SubmitOrderRequest {
   @IsInt()
   @Min(1)
   userId!: number;
@@ -65,7 +65,7 @@ export class SubmitOrderBody {
   price?: string;
 }
 
-function shapeMessage(body: SubmitOrderBody): string | null {
+function shapeMessage(body: SubmitOrderRequest): string | null {
   if (body.side === 'CASH_IN' || body.side === 'CASH_OUT') {
     if (
       body.type !== 'MARKET' ||

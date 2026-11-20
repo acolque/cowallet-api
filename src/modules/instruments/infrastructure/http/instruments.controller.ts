@@ -5,13 +5,18 @@ import {
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SearchInstrumentsUseCase } from '../../application/search-instruments.use-case';
-import { Instrument } from '../../domain/instrument';
-import { SearchInstrumentsQuery } from './search-instruments.query';
+import {
+  InstrumentResponse,
+  toInstrumentResponse,
+} from './instrument.response';
+import { SearchInstrumentsRequest } from './search-instruments.request';
 
 const DEFAULT_LIMIT = 20;
 
 @Controller('instruments')
+@ApiTags('instruments')
 @UsePipes(
   new ValidationPipe({
     transform: true,
@@ -22,10 +27,14 @@ export class InstrumentsController {
   constructor(private readonly searchInstruments: SearchInstrumentsUseCase) {}
 
   @Get()
-  search(@Query() query: SearchInstrumentsQuery): Promise<Instrument[]> {
-    return this.searchInstruments.execute({
-      query: query.q,
-      limit: query.limit ?? DEFAULT_LIMIT,
+  @ApiOperation({ summary: 'Search instruments by ticker or name' })
+  async search(
+    @Query() request: SearchInstrumentsRequest,
+  ): Promise<InstrumentResponse[]> {
+    const instruments = await this.searchInstruments.execute({
+      query: request.q,
+      limit: request.limit ?? DEFAULT_LIMIT,
     });
+    return instruments.map(toInstrumentResponse);
   }
 }

@@ -28,6 +28,8 @@ npm run start:dev
 
 `GET http://localhost:3000/health` responde `ok` cuando los tres módulos se registraron al iniciar.
 
+`http://localhost:3000/docs` sirve Swagger UI para probar los endpoints. No se expone cuando `NODE_ENV` es `production`.
+
 ## Supuestos
 
 ### Portfolio

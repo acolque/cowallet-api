@@ -1,7 +1,7 @@
 import { validate } from 'class-validator';
-import { SubmitOrderBody } from './submit-order.body';
+import { SubmitOrderRequest } from './submit-order.request';
 
-describe('SubmitOrderBody', () => {
+describe('SubmitOrderRequest', () => {
   it('accepts a market order with a size and no price', async () => {
     await expect(messages(body({ type: 'MARKET', size: 2 }))).resolves.toEqual(
       [],
@@ -80,8 +80,8 @@ describe('SubmitOrderBody', () => {
   });
 });
 
-function body(overrides: Partial<SubmitOrderBody>): SubmitOrderBody {
-  return Object.assign(new SubmitOrderBody(), {
+function body(overrides: Partial<SubmitOrderRequest>): SubmitOrderRequest {
+  return Object.assign(new SubmitOrderRequest(), {
     userId: 7,
     instrumentId: 34,
     side: 'BUY',
@@ -89,7 +89,7 @@ function body(overrides: Partial<SubmitOrderBody>): SubmitOrderBody {
   });
 }
 
-async function messages(order: SubmitOrderBody): Promise<string[]> {
+async function messages(order: SubmitOrderRequest): Promise<string[]> {
   const result = await validate(order);
   return result.flatMap((error) => Object.values(error.constraints ?? {}));
 }

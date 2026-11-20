@@ -12,9 +12,11 @@
     "test:integration": "jest --config jest.integration.config.js"
   },
   "dependencies": {
+    "@fastify/static": "^10.1.12",
     "@nestjs/common": "^11.1.6",
     "@nestjs/core": "^11.1.6",
     "@nestjs/platform-fastify": "^11.1.6",
+    "@nestjs/swagger": "^11.4.8",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "drizzle-orm": "^0.45.4",
