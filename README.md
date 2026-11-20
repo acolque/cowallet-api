@@ -25,6 +25,7 @@ Cada módulo separa `domain`, `application` e `infrastructure`. Los controllers 
 npm install
 npm run start:dev
 ```
+_Nota: recordar usar el .env.example y completar las variables de entorno_
 
 `GET http://localhost:3000/health` responde `ok` cuando los tres módulos se registraron al iniciar.
 
