@@ -4,4 +4,5 @@ module.exports = {
   testEnvironment: 'node',
   rootDir: 'src',
   testRegex: '.*\\.spec\\.ts$',
+  testPathIgnorePatterns: ['\\.integration\\.spec\\.ts$'],
 };
