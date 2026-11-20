@@ -52,12 +52,16 @@ export class SubmitOrderBody {
 
   @IsOptional()
   @IsString()
-  @Matches(/^[1-9]\d*$/)
+  @Matches(/^[1-9]\d*$/, {
+    message: 'Amount must be a positive whole number of pesos',
+  })
   amount?: string;
 
   @IsOptional()
   @IsString()
-  @Matches(PRICE)
+  @Matches(PRICE, {
+    message: 'Price must be a number with up to two decimal places',
+  })
   price?: string;
 }
 
@@ -82,11 +86,14 @@ function shapeMessage(body: SubmitOrderBody): string | null {
   if (body.type === 'MARKET' && body.price !== undefined) {
     return 'Market orders use the latest close and do not take a price';
   }
+  if (body.type === 'LIMIT' && body.price === undefined) {
+    return 'Limit orders require a price greater than zero';
+  }
   if (
     body.type === 'LIMIT' &&
-    (body.price === undefined ||
-      !PRICE.test(body.price) ||
-      compareDecimal(body.price, '0') <= 0)
+    typeof body.price === 'string' &&
+    PRICE.test(body.price) &&
+    compareDecimal(body.price, '0') <= 0
   ) {
     return 'Limit orders require a price greater than zero';
   }
