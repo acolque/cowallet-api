@@ -22,7 +22,13 @@ import {
 
 const STOCK_TYPE = 'ACCIONES';
 const CURRENCY_TYPE = 'MONEDA';
+const MARKET_TYPE: OrderType = 'MARKET';
+const LIMIT_TYPE: OrderType = 'LIMIT';
+const CASH_IN_SIDE: OrderSide = 'CASH_IN';
+const CASH_OUT_SIDE: OrderSide = 'CASH_OUT';
+const BUY_SIDE: OrderSide = 'BUY';
 const CASH_PRICE = '1.00';
+const ZERO_AMOUNT = '0';
 const MAX_SIZE = 2_147_483_647;
 const POSITIVE_INTEGER = /^[1-9]\d*$/;
 
@@ -71,7 +77,7 @@ export class SubmitOrderUseCase {
           instrumentId: input.instrumentId,
           size,
           price,
-          type: isCashMovement(input.side) ? 'MARKET' : input.type,
+          type: isCashMovement(input.side) ? MARKET_TYPE : input.type,
           side: input.side,
           datetime: new Date(),
         },
@@ -108,7 +114,7 @@ export class SubmitOrderUseCase {
   ): Promise<EvaluatedOrder> {
     const size = this.cashSize(input.amount);
     const accepted =
-      input.side === 'CASH_IN' ||
+      input.side === CASH_IN_SIDE ||
       (await this.hasEnoughCash(input.userId, String(size)));
 
     return { accepted, size, price: CASH_PRICE };
@@ -120,7 +126,7 @@ export class SubmitOrderUseCase {
     const price = await this.tradePrice(input);
     const size = this.tradeSize(input, price);
     const accepted =
-      input.side === 'BUY'
+      input.side === BUY_SIDE
         ? await this.hasEnoughCash(
             input.userId,
             multiplyDecimal(String(size), price),
@@ -143,13 +149,13 @@ export class SubmitOrderUseCase {
   }
 
   private async tradePrice(input: SubmitOrderInput): Promise<string> {
-    if (input.type === 'LIMIT') {
+    if (input.type === LIMIT_TYPE) {
       return input.price ?? '';
     }
 
     const [price] = await this.marketDataRepository.getLatestPrices([input.instrumentId]);
     const close = price?.close ?? null;
-    if (close === null || compareDecimal(close, '0') <= 0) {
+    if (close === null || compareDecimal(close, ZERO_AMOUNT) <= 0) {
       throw new MarketPriceUnavailableError();
     }
 
@@ -161,7 +167,7 @@ export class SubmitOrderUseCase {
       return input.size;
     }
 
-    const size = floorDivideDecimal(input.amount ?? '0', price);
+    const size = floorDivideDecimal(input.amount ?? ZERO_AMOUNT, price);
     if (!POSITIVE_INTEGER.test(size)) {
       throw new AmountBelowOneSizeError();
     }
@@ -197,7 +203,7 @@ export class SubmitOrderUseCase {
     ]);
     const netSize =
       positions.find((position) => position.instrumentId === instrumentId)
-        ?.netSize ?? '0';
+        ?.netSize ?? ZERO_AMOUNT;
 
     return (
       compareDecimal(
@@ -209,5 +215,5 @@ export class SubmitOrderUseCase {
 }
 
 function isCashMovement(side: OrderSide): boolean {
-  return side === 'CASH_IN' || side === 'CASH_OUT';
+  return side === CASH_IN_SIDE || side === CASH_OUT_SIDE;
 }
