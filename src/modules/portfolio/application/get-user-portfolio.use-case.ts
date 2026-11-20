@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import {
   addDecimal,
+  compareDecimal,
   isNegativeDecimal,
   multiplyDecimal,
   percentageChange,
@@ -30,6 +31,10 @@ export class GetUserPortfolioUseCase {
     ]);
 
     const valuedPositions = positions.filter((position) => {
+      if (compareDecimal(position.netSize, '0') === 0) {
+        return false;
+      }
+
       if (!isNegativeDecimal(position.netSize)) {
         return true;
       }
