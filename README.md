@@ -2,7 +2,12 @@
 
 Cocos Backend Challenge
 
-API NestJS sobre Fastify, con arquitectura hexagonal por módulo.
+## techs
+* API NestJS sobre Fastify, con arquitectura hexagonal por módulo.
+* Drizzle como ORM
+* PostgresSQL DB
+* jest para unit test
+* Pino para logging
 
 ## Módulos
 
@@ -12,7 +17,7 @@ En `src/modules/`:
 - `portfolio`
 - `instruments`
 
-Cada módulo separa `domain`, `application` e `infrastructure`. Los controllers viven en infraestructura HTTP y corren sobre el adapter de Fastify. `health` es la excepción: un controller plano, sin esas capas.
+Cada módulo separa `domain`, `application` e `infrastructure`. Los controllers viven en infraestructura HTTP y corren sobre el adapter de Fastify.
 
 ## Arranque local
 
@@ -22,6 +27,11 @@ npm run start:dev
 ```
 
 `GET http://localhost:3000/health` responde `ok` cuando los tres módulos se registraron al iniciar.
+
+## Test de integración
+* Se agrega un test de integración con `testcontainers` para simular una conexión a la DB con el fin de probar un caso borde de concurrencia: `usuario 1 posee 40 de size de un instrument, envia 2 requests al mismo tiempo de SELL con LIMIT, uno con size 30 y otro con size 20. El primero en llegar debe aceptarse y el segundo esperar el impacto del primero y luego rechazarse`
+* Para esta prueba se requiere tener docker ejecutandose localmente
+* El test se excluye para el comando npm test, para ejecutarlo: `npm run test:integration`
 
 ## Supuestos
 
