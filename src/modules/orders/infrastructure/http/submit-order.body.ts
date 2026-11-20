@@ -14,7 +14,7 @@ import {
 import { compareDecimal } from '../../../../shared/domain/decimal';
 import { OrderSide, OrderType } from '../../domain/order';
 
-const MAX_SHARE_QUANTITY = 2_147_483_647;
+const MAX_SIZE = 2_147_483_647;
 const PRICE = /^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/;
 
 @ValidatorConstraint({ name: 'submitOrderShape', async: false })
@@ -47,8 +47,8 @@ export class SubmitOrderBody {
   @IsOptional()
   @IsInt()
   @Min(1)
-  @Max(MAX_SHARE_QUANTITY)
-  quantity?: number;
+  @Max(MAX_SIZE)
+  size?: number;
 
   @IsOptional()
   @IsString()
@@ -70,7 +70,7 @@ function shapeMessage(body: SubmitOrderBody): string | null {
     if (
       body.type !== 'MARKET' ||
       body.amount === undefined ||
-      body.quantity !== undefined ||
+      body.size !== undefined ||
       body.price !== undefined
     ) {
       return 'Cash transfers send a peso amount as a market order';
@@ -78,10 +78,10 @@ function shapeMessage(body: SubmitOrderBody): string | null {
     return null;
   }
 
-  const hasQuantity = body.quantity !== undefined;
+  const hasSize = body.size !== undefined;
   const hasAmount = body.amount !== undefined;
-  if (hasQuantity === hasAmount) {
-    return 'Send either quantity or amount';
+  if (hasSize === hasAmount) {
+    return 'Send either size or amount';
   }
   if (body.type === 'MARKET' && body.price !== undefined) {
     return 'Market orders use the latest close and do not take a price';

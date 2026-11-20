@@ -14,7 +14,7 @@ import {
 } from '@nestjs/common';
 import { CancelOrderUseCase } from '../../application/cancel-order.use-case';
 import {
-  AmountBelowOneShareError,
+  AmountBelowOneSizeError,
   InstrumentNotFoundError,
   InstrumentNotTradableError,
   InvalidOrderRequestError,
@@ -74,7 +74,7 @@ function toHttpException(error: unknown): Error {
   if (
     error instanceof InstrumentNotTradableError ||
     error instanceof MarketPriceUnavailableError ||
-    error instanceof AmountBelowOneShareError
+    error instanceof AmountBelowOneSizeError
   ) {
     return new UnprocessableEntityException(error.message);
   }

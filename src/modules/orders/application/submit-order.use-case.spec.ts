@@ -4,7 +4,7 @@ import { Order } from '../domain/order';
 import { OrderReadRepository } from '../domain/order-read.repository';
 import { NewOrder, OrderRepository } from '../domain/order.repository';
 import {
-  AmountBelowOneShareError,
+  AmountBelowOneSizeError,
   InstrumentNotFoundError,
   InstrumentNotTradableError,
   MarketPriceUnavailableError,
@@ -82,7 +82,7 @@ describe('SubmitOrderUseCase', () => {
   });
 
   it('fills a market buy at the latest close when cash available is enough', async () => {
-    const result = await useCase.execute(buy({ type: 'MARKET', quantity: 2 }));
+    const result = await useCase.execute(buy({ type: 'MARKET', size: 2 }));
 
     expect(marketData.getLatestPrices).toHaveBeenCalledWith([34]);
     expect(orderRead.sumFilledOrders).toHaveBeenCalledWith(7);
@@ -111,7 +111,7 @@ describe('SubmitOrderUseCase', () => {
   it('persists a market buy as REJECTED when available cash is short', async () => {
     orderRead.sumFilledOrders.mockResolvedValue('1000');
 
-    const result = await useCase.execute(buy({ type: 'MARKET', quantity: 5 }));
+    const result = await useCase.execute(buy({ type: 'MARKET', size: 5 }));
 
     expect(result.status).toBe('REJECTED');
     expect(orders.insert).toHaveBeenCalledWith(
@@ -127,7 +127,7 @@ describe('SubmitOrderUseCase', () => {
     orderRead.sumFilledOrders.mockResolvedValue('1000');
 
     const result = await useCase.execute(
-      buy({ type: 'LIMIT', quantity: 5, price: '930.00' }),
+      buy({ type: 'LIMIT', size: 5, price: '930.00' }),
     );
 
     expect(result.status).toBe('REJECTED');
@@ -139,7 +139,7 @@ describe('SubmitOrderUseCase', () => {
 
   it('leaves a funded limit buy NEW at the requested price', async () => {
     const result = await useCase.execute(
-      buy({ type: 'LIMIT', quantity: 2, price: '710.50' }),
+      buy({ type: 'LIMIT', size: 2, price: '710.50' }),
     );
 
     expect(result).toEqual(
@@ -147,7 +147,7 @@ describe('SubmitOrderUseCase', () => {
     );
   });
 
-  it('converts a peso amount into the whole shares that fit in that amount', async () => {
+  it('converts a peso amount into the whole size that fits in that amount', async () => {
     const result = await useCase.execute(
       buy({ type: 'LIMIT', amount: '100', price: '10.50' }),
     );
@@ -158,17 +158,17 @@ describe('SubmitOrderUseCase', () => {
     expect(result.size).toBe(9);
   });
 
-  it('does not persist an amount that does not cover one size instrument', async () => {
+  it('does not persist an amount that does not cover one size', async () => {
     await expect(
       useCase.execute(buy({ type: 'LIMIT', amount: '20', price: '100' })),
-    ).rejects.toBeInstanceOf(AmountBelowOneShareError);
+    ).rejects.toBeInstanceOf(AmountBelowOneSizeError);
 
     expect(orders.insert).not.toHaveBeenCalled();
   });
 
   it('accepts a limit sell of 30 when 40 size are available', async () => {
     const result = await useCase.execute(
-      sell({ type: 'LIMIT', quantity: 30, price: '950.00' }),
+      sell({ type: 'LIMIT', size: 30, price: '950.00' }),
     );
 
     expect(orderRead.netFilledSizeByInstrument).toHaveBeenCalledWith(7);
@@ -184,7 +184,7 @@ describe('SubmitOrderUseCase', () => {
     orderRead.sumLimitSellSizeOrders.mockResolvedValue('30');
 
     const result = await useCase.execute(
-      sell({ type: 'LIMIT', quantity: 20, price: '960.00' }),
+      sell({ type: 'LIMIT', size: 20, price: '960.00' }),
     );
 
     expect(result.status).toBe('REJECTED');
@@ -193,8 +193,8 @@ describe('SubmitOrderUseCase', () => {
     );
   });
 
-  it('fills a market sell at the latest close when the instruments size are available', async () => {
-    const result = await useCase.execute(sell({ type: 'MARKET', quantity: 10 }));
+  it('fills a market sell at the latest close when the size is available', async () => {
+    const result = await useCase.execute(sell({ type: 'MARKET', size: 10 }));
 
     expect(result).toEqual(
       expect.objectContaining({ status: 'FILLED', price: '930.00', size: 10 }),
@@ -203,18 +203,18 @@ describe('SubmitOrderUseCase', () => {
 
   it('does not persist an order for an unknown user or instrument', async () => {
     orders.userExists.mockResolvedValue(false);
-    await expect(useCase.execute(buy({ type: 'MARKET', quantity: 1 }))).rejects.toBeInstanceOf(
+    await expect(useCase.execute(buy({ type: 'MARKET', size: 1 }))).rejects.toBeInstanceOf(
       UserNotFoundError,
     );
 
     orders.userExists.mockResolvedValue(true);
     instruments.findById.mockResolvedValue(null);
-    await expect(useCase.execute(buy({ type: 'MARKET', quantity: 1 }))).rejects.toBeInstanceOf(
+    await expect(useCase.execute(buy({ type: 'MARKET', size: 1 }))).rejects.toBeInstanceOf(
       InstrumentNotFoundError,
     );
 
     instruments.findById.mockResolvedValue({ ...stock, type: 'MONEDA' });
-    await expect(useCase.execute(buy({ type: 'MARKET', quantity: 1 }))).rejects.toBeInstanceOf(
+    await expect(useCase.execute(buy({ type: 'MARKET', size: 1 }))).rejects.toBeInstanceOf(
       InstrumentNotTradableError,
     );
 

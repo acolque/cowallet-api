@@ -33,10 +33,10 @@ export class MarketPriceUnavailableError extends Error {
   }
 }
 
-export class AmountBelowOneShareError extends Error {
+export class AmountBelowOneSizeError extends Error {
   constructor() {
-    super('Amount does not cover one share');
-    this.name = 'AmountBelowOneShareError';
+    super('Amount does not cover one size');
+    this.name = 'AmountBelowOneSizeError';
   }
 }
 

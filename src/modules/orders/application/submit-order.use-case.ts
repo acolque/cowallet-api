@@ -12,7 +12,7 @@ import { Order, OrderSide, OrderType } from '../domain/order';
 import { OrderReadRepository } from '../domain/order-read.repository';
 import { OrderRepository } from '../domain/order.repository';
 import {
-  AmountBelowOneShareError,
+  AmountBelowOneSizeError,
   InstrumentNotFoundError,
   InstrumentNotTradableError,
   InvalidOrderRequestError,
@@ -23,7 +23,7 @@ import {
 const STOCK_TYPE = 'ACCIONES';
 const CURRENCY_TYPE = 'MONEDA';
 const CASH_PRICE = '1.00';
-const MAX_SHARE_QUANTITY = 2_147_483_647;
+const MAX_SIZE = 2_147_483_647;
 const POSITIVE_INTEGER = /^[1-9]\d*$/;
 
 export interface SubmitOrderInput {
@@ -31,7 +31,7 @@ export interface SubmitOrderInput {
   instrumentId: number;
   side: OrderSide;
   type: OrderType;
-  quantity?: number;
+  size?: number;
   amount?: string;
   price?: string;
 }
@@ -118,7 +118,7 @@ export class SubmitOrderUseCase {
     input: SubmitOrderInput,
   ): Promise<EvaluatedOrder> {
     const price = await this.tradePrice(input);
-    const size = this.shareSize(input, price);
+    const size = this.tradeSize(input, price);
     const accepted =
       input.side === 'BUY'
         ? await this.hasEnoughCash(
@@ -134,7 +134,7 @@ export class SubmitOrderUseCase {
     if (
       amount === undefined ||
       !POSITIVE_INTEGER.test(amount) ||
-      BigInt(amount) > BigInt(MAX_SHARE_QUANTITY)
+      BigInt(amount) > BigInt(MAX_SIZE)
     ) {
       throw new InvalidOrderRequestError('Amount is too large');
     }
@@ -156,20 +156,20 @@ export class SubmitOrderUseCase {
     return close;
   }
 
-  private shareSize(input: SubmitOrderInput, price: string): number {
-    if (input.quantity !== undefined) {
-      return input.quantity;
+  private tradeSize(input: SubmitOrderInput, price: string): number {
+    if (input.size !== undefined) {
+      return input.size;
     }
 
-    const shares = floorDivideDecimal(input.amount ?? '0', price);
-    if (!POSITIVE_INTEGER.test(shares)) {
-      throw new AmountBelowOneShareError();
+    const size = floorDivideDecimal(input.amount ?? '0', price);
+    if (!POSITIVE_INTEGER.test(size)) {
+      throw new AmountBelowOneSizeError();
     }
-    if (BigInt(shares) > BigInt(MAX_SHARE_QUANTITY)) {
-      throw new InvalidOrderRequestError('Quantity is too large');
+    if (BigInt(size) > BigInt(MAX_SIZE)) {
+      throw new InvalidOrderRequestError('Size is too large');
     }
 
-    return Number(shares);
+    return Number(size);
   }
 
   private async hasEnoughCash(userId: number, required: string): Promise<boolean> {

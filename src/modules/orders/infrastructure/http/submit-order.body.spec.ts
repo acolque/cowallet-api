@@ -2,36 +2,36 @@ import { validate } from 'class-validator';
 import { SubmitOrderBody } from './submit-order.body';
 
 describe('SubmitOrderBody', () => {
-  it('accepts a market order with a share quantity and no price', async () => {
-    await expect(messages(body({ type: 'MARKET', quantity: 2 }))).resolves.toEqual(
+  it('accepts a market order with a size and no price', async () => {
+    await expect(messages(body({ type: 'MARKET', size: 2 }))).resolves.toEqual(
       [],
     );
   });
 
   it('accepts a limit order with a price greater than zero', async () => {
     await expect(
-      messages(body({ type: 'LIMIT', quantity: 30, price: '710.50' })),
+      messages(body({ type: 'LIMIT', size: 30, price: '710.50' })),
     ).resolves.toEqual([]);
   });
 
-  it('accepts an amount instead of a quantity', async () => {
+  it('accepts an amount instead of a size', async () => {
     await expect(
       messages(body({ type: 'LIMIT', amount: '10000', price: '710.50' })),
     ).resolves.toEqual([]);
   });
 
-  it('rejects a body that sends both quantity and amount, or neither', async () => {
+  it('rejects a body that sends both size and amount, or neither', async () => {
     await expect(
-      messages(body({ type: 'LIMIT', quantity: 1, amount: '10', price: '10' })),
-    ).resolves.toContain('Send either quantity or amount');
+      messages(body({ type: 'LIMIT', size: 1, amount: '10', price: '10' })),
+    ).resolves.toContain('Send either size or amount');
     await expect(
       messages(body({ type: 'LIMIT', price: '10' })),
-    ).resolves.toContain('Send either quantity or amount');
+    ).resolves.toContain('Send either size or amount');
   });
 
   it('rejects a market order that includes a price', async () => {
     await expect(
-      messages(body({ type: 'MARKET', quantity: 2, price: '930.00' })),
+      messages(body({ type: 'MARKET', size: 2, price: '930.00' })),
     ).resolves.toContain(
       'Market orders use the latest close and do not take a price',
     );
@@ -39,10 +39,10 @@ describe('SubmitOrderBody', () => {
 
   it('rejects a limit order without a positive price', async () => {
     await expect(
-      messages(body({ type: 'LIMIT', quantity: 1 })),
+      messages(body({ type: 'LIMIT', size: 1 })),
     ).resolves.toContain('Limit orders require a price greater than zero');
     await expect(
-      messages(body({ type: 'LIMIT', quantity: 1, price: '0.00' })),
+      messages(body({ type: 'LIMIT', size: 1, price: '0.00' })),
     ).resolves.toContain('Limit orders require a price greater than zero');
   });
 
@@ -55,9 +55,9 @@ describe('SubmitOrderBody', () => {
     ).resolves.toEqual([]);
   });
 
-  it('rejects a cash transfer with a quantity, a price, or a limit type', async () => {
+  it('rejects a cash transfer with a size, a price, or a limit type', async () => {
     await expect(
-      messages(body({ side: 'CASH_IN', type: 'MARKET', quantity: 10 })),
+      messages(body({ side: 'CASH_IN', type: 'MARKET', size: 10 })),
     ).resolves.toContain('Cash transfers send a peso amount as a market order');
     await expect(
       messages(
@@ -71,12 +71,12 @@ describe('SubmitOrderBody', () => {
     ).resolves.toContain('Cash transfers send a peso amount as a market order');
   });
 
-  it('rejects a quantity above the integer column limit', async () => {
+  it('rejects a size above the integer column limit', async () => {
     const result = await validate(
-      body({ type: 'MARKET', quantity: 2_147_483_648 }),
+      body({ type: 'MARKET', size: 2_147_483_648 }),
     );
 
-    expect(result.some((error) => error.property === 'quantity')).toBe(true);
+    expect(result.some((error) => error.property === 'size')).toBe(true);
   });
 });
 

@@ -80,14 +80,14 @@ describe('SubmitOrderUseCase concurrency', () => {
     );
   });
 
-  it('accepts one limit sell and rejects the other when both race for the same shares', async () => {
+  it('accepts one limit sell and rejects the other when both race for the same size', async () => {
     const [sell30, sell20] = await Promise.all([
       useCase.execute({
         userId: USER_ID,
         instrumentId: INSTRUMENT_ID,
         side: 'SELL',
         type: 'LIMIT',
-        quantity: 30,
+        size: 30,
         price: '1.00',
       }),
       useCase.execute({
@@ -95,7 +95,7 @@ describe('SubmitOrderUseCase concurrency', () => {
         instrumentId: INSTRUMENT_ID,
         side: 'SELL',
         type: 'LIMIT',
-        quantity: 20,
+        size: 20,
         price: '1.00',
       }),
     ]);
